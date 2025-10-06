@@ -1,0 +1,146 @@
+{
+  "name": "@yellbook/api",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "targets": {
+      "build": {
+        "executor": "@nx/esbuild:esbuild",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "defaultConfiguration": "production",
+        "options": {
+          "platform": "node",
+          "outputPath": "dist/apps/api",
+          "format": [
+            "cjs"
+          ],
+          "bundle": true,
+          "main": "apps/api/src/main.ts",
+          "tsConfig": "apps/api/tsconfig.app.json",
+          "external": [
+            "@prisma/client",
+            ".prisma/client"
+          ],
+          "assets": [
+            "apps/api/src/assets",
+            "apps/api/src/app/plugins/**/*"
+          ],
+          "esbuildOptions": {
+            "sourcemap": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        },
+        "configurations": {
+          "development": {},
+          "production": {
+            "esbuildOptions": {
+              "sourcemap": false,
+              "outExtension": {
+                ".js": ".js"
+              }
+            }
+          }
+        }
+      },
+      "prune-lockfile": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "executor": "@nx/js:prune-lockfile",
+        "outputs": [
+          "{workspaceRoot}/dist/apps/api/package.json",
+          "{workspaceRoot}/dist/apps/api/bun.lock"
+        ],
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "copy-workspace-modules": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "outputs": [
+          "{workspaceRoot}/dist/apps/api/workspace_modules"
+        ],
+        "executor": "@nx/js:copy-workspace-modules",
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "prune": {
+        "dependsOn": [
+          "prune-lockfile",
+          "copy-workspace-modules"
+        ],
+        "executor": "nx:noop"
+      },
+      "dev": {
+        "continuous": true,
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "@yellbook/api:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "@yellbook/api:build:development"
+          },
+          "production": {
+            "buildTarget": "@yellbook/api:build:production"
+          }
+        }
+      },
+      "serve": {
+        "continuous": true,
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "@yellbook/api:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "@yellbook/api:build:development"
+          },
+          "production": {
+            "buildTarget": "@yellbook/api:build:production"
+          }
+        }
+      }
+    }
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@fastify/autoload": "~6.0.3",
+    "@fastify/cors": "^11.1.0",
+    "@fastify/sensible": "~6.0.2",
+    "@prisma/client": "^6.16.2",
+    "@prisma/extension-accelerate": "^2.0.2",
+    "@trpc/server": "^11.5.1",
+    "fastify": "~5.2.1",
+    "fastify-plugin": "~5.0.1",
+    "tsx": "^4.20.5",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@nx/next": "^21.5.2",
+    "prisma": "^6.16.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
