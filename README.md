@@ -1,12 +1,12 @@
 # Шар ном (Yellbook)
 
-Энэ монорепод Nx, Fastify, Prisma, Next.js ашиглан "Шар ном"-ын лавлах мэдээллийн сангийн вэб болон API үйлчилгээ байрлаж байна. Каталогийн бүх байгууллага Prisma + SQLite өгөгдлийн санд хадгалагдаж, API болон вэб апп ижил Zod гэрээгээр (libs/types) өгөгдлөө баталгаажуулдаг.
+Энэ монорепод Nx, Fastify, Prisma, Next.js ашиглан "Шар ном"-ын лавлах мэдээллийн сангийн вэб болон API үйлчилгээ байрлаж байна. Каталогийн бүх байгууллага Prisma + PostgreSQL өгөгдлийн санд хадгалагдаж, API болон вэб апп ижил Zod гэрээгээр (libs/types) өгөгдлөө баталгаажуулдаг.
 
 ## Технологи
 
 - [Nx](https://nx.dev/) — workspace, lint/typecheck/build командууд
 - [Fastify](https://fastify.dev/) + [tRPC](https://trpc.io/) — API ба real-time query гэрээ
-- [Prisma](https://prisma.io/) + SQLite — өгөгдлийн сангийн схем, миграци, seed
+- [Prisma](https://prisma.io/) + PostgreSQL — өгөгдлийн сангийн схем, миграци, seed
 - [Next.js 15 App Router](https://nextjs.org/) — фронт-энд
 - [TailwindCSS](https://tailwindcss.com/) — UI загварчлал
 - [Zod](https://zod.dev/) — API ба вэб талуудын гэрээ нэгтгэх
@@ -18,13 +18,20 @@
    npm install
    ```
 
-2. **Өгөгдлийн санг бэлдэх** — SQLite файл нь `apps/api/dev.db` нэртэйгээр үүсэх ба анхны өгөгдлийг seed хийнэ.
+2. **PostgreSQL сервер асаах** — Docker ашиглавал төслийн root-д байрлах `docker-compose.yml`-ийг ажиллуулна. PostgreSQL 15 контейнер `localhost:5432` дээр `postgres/postgres` нэвтрэх мэдээлэлтэйгээр асна.
+   ```bash
+   docker compose up -d db
+   ```
+
+3. **Орчны хувьсагч тохируулах** — `apps/api/.env.example` файлыг `apps/api/.env` болгон хуулж, шаардлагатай бол хэрэглэгч/нууц үгийг өөрчилнө.
+
+4. **Өгөгдлийн санг бэлдэх** — миграци ажиллуулж, seed хийнэ.
    ```bash
    npm run prisma:migrate -w @yellbook/api
    npm run prisma:seed -w @yellbook/api
    ```
 
-3. **Хөгжүүлэлтийн серверүүд**
+5. **Хөгжүүлэлтийн серверүүд**
    ```bash
    npm run dev:api   # Fastify + tRPC API (http://localhost:3001)
    npm run dev:web   # Next.js фронт-энд (http://localhost:3000)
@@ -60,6 +67,7 @@ libs/
 4. **Visual Studio 2022 (Node.js development workload)**
    - Installer-оор "Node.js development" workload-ыг идэвхжүүлсэн эсэхээ шалгаад `File → Open → Folder...` цэснээс төслийг нээнэ.
    - `package.json` файлыг Solution Explorer дээрээс сонгон баруун товшсоны дараа `Open Command Prompt Here` эсвэл `Open in Terminal`-ыг ажиллуулж npm скриптүүдийг (`npm run dev:api`, `npm run dev:web`) эхлүүлнэ.
+   - PostgreSQL орчны хувьсагчийг тохируулахын тулд Solution Explorer дээрх `apps/api/.env.example` файлыг нээн, бүх мөрийг хуулж `apps/api/.env` нэртэй шинэ файл үүсгэнэ (Visual Studio дээр шууд Paste хийж болно).
 5. **Хөгжүүлэлтийн серверүүдийг асаах** – README-ийн "Түргэн эхлэх" хэсгийн скриптүүдийг терминалаас ажиллуулж, API (`http://localhost:3001`), вэб (`http://localhost:3000`) серверүүд рүү хандаж ажиллаж буйг шалгана.
 
 Ингэснээр Nx-ийн бүтэц болон Prisma/Next.js төслийн мод бүхэлдээ Visual Studio орчинд харагдаж, ESLint/Prettier тохиргоонууд автоматаар танигдана.
@@ -69,7 +77,7 @@ libs/
 - Prisma схем: `apps/api/prisma/schema.prisma`
 - Миграци: `apps/api/prisma/migrations/*`
 - Seed: `apps/api/prisma/seed.ts` — 6 байгууллага, категори, tag-уудтай
-- SQLite файл: `apps/api/dev.db` (git-ignore-д багтсан)
+- Орчны хувьсагчийн жишээ: `apps/api/.env.example`
 
 Өөрчлөлт оруулсны дараа шинэ миграци үүсгэх:
 ```bash
