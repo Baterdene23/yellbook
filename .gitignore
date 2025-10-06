@@ -46,3 +46,5 @@ Thumbs.db
 # Next.js
 .next
 out
+apps/api/dev.db
+apps/api/prisma/dev.db

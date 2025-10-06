@@ -1,75 +1,90 @@
-import { QueryCache, QueryClient, isServer } from "@tanstack/react-query";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
-import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
-import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
-/* eslint-disable-next-line */
-import type{ AppRouter } from "../../../api/src/app/trpc/router";
-import { toast } from "sonner";
-function makeQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 60 * 1000,
-      },
-    },
-  })
-}
+import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
-let browserQueryClient: QueryClient | undefined = undefined
+import type { OrganizationKind, YellowBookCategory, YellowBookEntry } from '@lib/types';
+import { YellowBookCategorySchema, YellowBookEntrySchema } from '@lib/types';
 
-function getQueryClient() {
-  if (isServer) {
-    // Server: always make a new query client
-    return makeQueryClient()
-  } else {
-    // Browser: make a new query client if we don't already have one
-    // This is very important, so we don't re-make a new client if React
-    // suspends during the initial render. This may not be needed if we
-    // have a suspense boundary BELOW the creation of the query client
-    if (!browserQueryClient) browserQueryClient = makeQueryClient()
-    return browserQueryClient
-  }
-}
 export const queryClient = new QueryClient({
-	queryCache: new QueryCache({
-		onError: (error) => {
-			toast.error(error.message, {
-				action: {
-					label: "retry",
-					onClick: () => {
-						queryClient.invalidateQueries();
-					},
-				},
-			});
-		},
-	}),
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+    },
+  },
+  queryCache: new QueryCache({
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : 'Алдаа гарлаа', {
+        action: {
+          label: 'Дахин оролдох',
+          onClick: () => {
+            queryClient.invalidateQueries();
+          },
+        },
+      });
+    },
+  }),
 });
 
 function getBaseUrl() {
-  if (typeof window !== 'undefined') return '';
-  // SSR: prefer internal Docker service; fallback to configured public URL or default
-  return (
-    process.env.INTERNAL_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_BACKEND_URL ||
-    'http://api:3001'
-  );
+  const browserBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:3001';
+  if (typeof window !== 'undefined') {
+    return browserBaseUrl;
+  }
+
+  return process.env.INTERNAL_BACKEND_URL ?? browserBaseUrl;
 }
 
-const trpcClient = createTRPCClient<AppRouter>({
-    links: [
-        httpBatchLink({
-            url: `${getBaseUrl()}/trpc`,
-            fetch(url, options) {
-                return fetch(url, {
-                    ...options,
-                    credentials: "include",
-                });
-            },
-        }),
-    ],
-});
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${getBaseUrl()}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    credentials: 'include',
+  });
 
-export const trpc: TRPCOptionsProxy<AppRouter> = createTRPCOptionsProxy<AppRouter>({
-	client: trpcClient,
-	queryClient:getQueryClient(),
-});
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(body || `Сүлжээний алдаа (${response.status})`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export type YellowBookListParams = {
+  search?: string;
+  categorySlug?: string;
+  organizationType?: OrganizationKind;
+  tag?: string;
+};
+
+export async function fetchYellowBookList(params: YellowBookListParams): Promise<YellowBookEntry[]> {
+  const url = new URL('/yellow-books', getBaseUrl());
+
+  if (params.search) {
+    url.searchParams.set('search', params.search);
+  }
+  if (params.categorySlug) {
+    url.searchParams.set('categorySlug', params.categorySlug);
+  }
+  if (params.organizationType) {
+    url.searchParams.set('organizationType', params.organizationType);
+  }
+  if (params.tag) {
+    url.searchParams.set('tag', params.tag);
+  }
+
+  const data = await apiFetch<unknown>(`${url.pathname}${url.search}`);
+  return YellowBookEntrySchema.array().parse(data);
+}
+
+export async function fetchYellowBookCategories(): Promise<YellowBookCategory[]> {
+  const data = await apiFetch<unknown>('/yellow-books/categories');
+  return YellowBookCategorySchema.array().parse(data);
+}
+
+export async function fetchYellowBookDetail(id: string): Promise<YellowBookEntry> {
+  const data = await apiFetch<unknown>(`/yellow-books/${id}`);
+  return YellowBookEntrySchema.parse(data);
+}

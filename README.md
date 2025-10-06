@@ -1,82 +1,82 @@
-# Yellbook
+# Шар ном (Yellbook)
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+Энэ монорепод Nx, Fastify, Prisma, Next.js ашиглан "Шар ном"-ын лавлах мэдээллийн сангийн вэб болон API үйлчилгээ байрлаж байна. Каталогийн бүх байгууллага Prisma + SQLite өгөгдлийн санд хадгалагдаж, API болон вэб апп ижил Zod гэрээгээр (libs/types) өгөгдлөө баталгаажуулдаг.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+## Технологи
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/next?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+- [Nx](https://nx.dev/) — workspace, lint/typecheck/build командууд
+- [Fastify](https://fastify.dev/) + [tRPC](https://trpc.io/) — API ба real-time query гэрээ
+- [Prisma](https://prisma.io/) + SQLite — өгөгдлийн сангийн схем, миграци, seed
+- [Next.js 15 App Router](https://nextjs.org/) — фронт-энд
+- [TailwindCSS](https://tailwindcss.com/) — UI загварчлал
+- [Zod](https://zod.dev/) — API ба вэб талуудын гэрээ нэгтгэх
 
-## Finish your CI setup
+## Түргэн эхлэх
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/9a9PJrGelR)
+1. **Хамаарал суулгах**
+   ```bash
+   npm install
+   ```
 
+2. **Өгөгдлийн санг бэлдэх** — SQLite файл нь `apps/api/dev.db` нэртэйгээр үүсэх ба анхны өгөгдлийг seed хийнэ.
+   ```bash
+   npm run prisma:migrate -w @yellbook/api
+   npm run prisma:seed -w @yellbook/api
+   ```
 
-## Run tasks
+3. **Хөгжүүлэлтийн серверүүд**
+   ```bash
+   npm run dev:api   # Fastify + tRPC API (http://localhost:3001)
+   npm run dev:web   # Next.js фронт-энд (http://localhost:3000)
+   ```
 
-To run the dev server for your app, use:
+   API сервер нь `GET /yellow-books` REST төгсгөлийг болон `/trpc/yellowBook.*` tRPC маршрутуудыг ил гаргана. Вэб тал React Query ашиглан API-тай холбогдоно.
 
-```sh
-npx nx dev yellbook
+## Полигон командууд
+
+- `npm run lint` — бүх lint дүрэм
+- `npm run typecheck` — TypeScript `--noEmit`
+- `npm run build` — Nx build (API + Web)
+
+## Төслийн бүтэц
+
+```
+apps/
+  api/                # Fastify + tRPC API, Prisma схем, миграци, seed
+  web/                # Next.js 15 App Router UI
+libs/
+  types/              # Zod гэрээ болон TypeScript төрлүүд
 ```
 
-To create a production bundle:
+## Visual Studio / Visual Studio Code дээр төслийг нээх
 
-```sh
-npx nx build yellbook
+Төслийн бүх эх код нэг Git агуулахад (монорепо) байрладаг тул Visual Studio эсвэл Visual Studio Code дээр нээхэд дараах алхмууд хангалттай.
+
+1. **Node.js суулгах** – `npm install` зэрэг командууд ажиллахын тулд LTS хувилбар (18.x эсвэл 20.x) суулгасан эсэхээ шалгана.
+2. **Эх сурвалж авах** – Git агуулахыг `git clone` эсвэл ZIP татаж аваад, эх кодыг локал дискэн дээр байрлуулна.
+3. **Visual Studio Code**
+   - `File → Open Folder...` командыг ашиглаад агуулахын үндсэн хавтсыг сонгоно.
+   - Нэмэлтээр `ms-vscode.vscode-typescript-next`, `esbenp.prettier-vscode`, `Prisma.prisma` зэрэг өргөтгөлүүдийг идэвхжүүлбэл lint, Prisma schema, Tailwind классуудыг санал болгоно.
+4. **Visual Studio 2022 (Node.js development workload)**
+   - Installer-оор "Node.js development" workload-ыг идэвхжүүлсэн эсэхээ шалгаад `File → Open → Folder...` цэснээс төслийг нээнэ.
+   - `package.json` файлыг Solution Explorer дээрээс сонгон баруун товшсоны дараа `Open Command Prompt Here` эсвэл `Open in Terminal`-ыг ажиллуулж npm скриптүүдийг (`npm run dev:api`, `npm run dev:web`) эхлүүлнэ.
+5. **Хөгжүүлэлтийн серверүүдийг асаах** – README-ийн "Түргэн эхлэх" хэсгийн скриптүүдийг терминалаас ажиллуулж, API (`http://localhost:3001`), вэб (`http://localhost:3000`) серверүүд рүү хандаж ажиллаж буйг шалгана.
+
+Ингэснээр Nx-ийн бүтэц болон Prisma/Next.js төслийн мод бүхэлдээ Visual Studio орчинд харагдаж, ESLint/Prettier тохиргоонууд автоматаар танигдана.
+
+## Prisma ба өгөгдөл
+
+- Prisma схем: `apps/api/prisma/schema.prisma`
+- Миграци: `apps/api/prisma/migrations/*`
+- Seed: `apps/api/prisma/seed.ts` — 6 байгууллага, категори, tag-уудтай
+- SQLite файл: `apps/api/dev.db` (git-ignore-д багтсан)
+
+Өөрчлөлт оруулсны дараа шинэ миграци үүсгэх:
+```bash
+cd apps/api
+npx prisma migrate dev --schema prisma/schema.prisma --name <migration_name>
 ```
 
-To see all available targets to run for a project, run:
+## Лиценз
 
-```sh
-npx nx show project yellbook
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/next:app demo
-```
-
-To generate a new library, use:
-
-```sh
-npx nx g @nx/react:lib mylib
-```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/next?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+MIT

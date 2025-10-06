@@ -27,8 +27,6 @@
     "rootDir": "../.."
   },
   "include": [
-    "../../apps/yellow-book/.next/types/**/*.ts",
-    "../../dist/apps/yellow-book/.next/types/**/*.ts",
     "next-env.d.ts",
     "src/**/*.js",
     "src/**/*.jsx",
