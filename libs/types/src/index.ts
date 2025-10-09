@@ -1,1 +1,1 @@
-export * from './lib/contract.js';
+export * from './lib/contract';

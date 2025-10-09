@@ -12,28 +12,64 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-model Business {
-  id        String   @id @default(uuid())
-  name      String
-  description String
-  address     String
-  phone       String
-  email       String   @unique
-  website     String
-  googleMapUrl String
-  facebookUrl String
-  instagramUrl String
-  timetable    String
-  category    Category @relation(fields: [categoryId], references: [id])
-  categoryId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum OrganizationKind {
+  BUSINESS
+  GOVERNMENT
+  MUNICIPAL
+  NGO
+  SERVICE
 }
 
-model Category {
-  id        String   @id @default(uuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  Business Business[]
+model YellowBookCategory {
+  id          String            @id @default(uuid())
+  name        String
+  slug        String            @unique
+  description String?
+  entries     YellowBookEntry[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model YellowBookTag {
+  id        String             @id @default(uuid())
+  label     String             @unique
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  entries   YellowBookEntryTag[]
+}
+
+model YellowBookEntry {
+  id             String              @id @default(uuid())
+  name           String
+  shortName      String?
+  summary        String
+  description    String?
+  streetAddress  String
+  district       String
+  province       String
+  website        String?
+  email          String?
+  phone          String
+  secondaryPhone String?
+  facebook       String?
+  instagram      String?
+  googleMapUrl   String?
+  hours          String?
+  latitude       Float?
+  longitude      Float?
+  kind           OrganizationKind
+  category       YellowBookCategory @relation(fields: [categoryId], references: [id])
+  categoryId     String
+  tags           YellowBookEntryTag[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model YellowBookEntryTag {
+  entry   YellowBookEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId String
+  tag     YellowBookTag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId   String
+
+  @@id([entryId, tagId])
 }

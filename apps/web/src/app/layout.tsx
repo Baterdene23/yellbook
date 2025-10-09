@@ -1,6 +1,8 @@
 import './global.css';
+
+import { Crimson_Text, Playfair_Display } from 'next/font/google';
+
 import Providers from './providers';
-import { Playfair_Display, Crimson_Text } from "next/font/google"
 
 export const metadata = {
   title: 'Yellow pages',
@@ -12,15 +14,12 @@ const playfairDisplay = Playfair_Display({
   variable: "--font-playfair",
   display: "swap",
 })
-
 const crimsonText = Crimson_Text({
   subsets: ["latin"],
   weight: ["400", "600", "700"],
   variable: "--font-crimson",
   display: "swap",
 })
-
-
 export default function RootLayout({
   children,
 }: {
@@ -28,7 +27,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-
       <body className={`font-serif ${playfairDisplay.variable} ${crimsonText.variable}`}>
         <Providers>
           <div
@@ -39,12 +37,11 @@ export default function RootLayout({
             repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(160,82,45,0.02) 2px, rgba(160,82,45,0.02) 4px),
             repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(160,82,45,0.02) 2px, rgba(160,82,45,0.02) 4px)
           `,
-              backgroundSize: "8px 8px, 32px 32px, 32px 32px",
+              backgroundSize: '8px 8px, 32px 32px, 32px 32px',
             }}
           />
           {children}
-
-          </Providers>
+        </Providers>
       </body>
     </html>
   );

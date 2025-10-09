@@ -1,72 +1,83 @@
-import { initTRPC } from '@trpc/server';
-import { z } from 'zod';
-import prisma from '../lib/prisma';
-type User = {
-  id: string;
-  name: string;
-  bio?: string;
-};
-const users: Record<string, User> = {
-    "1": {
-        id: "1",
-        name: "John Doe",
-        bio: "I am a software engineer",
-    },
-    "2": {
-        id: "2",
-        name: "Jane Doe",
-        bio: "I am a software engineer",
-    },
-    "3": {
-        id: "3",
-        name: "John Doe",
-        bio: "I am a software engineer",
-    },
-};
-export const t = initTRPC.create();
+import { Prisma } from '@prisma/client';
+import { initTRPC, TRPCError } from '@trpc/server';
+
+import type { Context } from './context';
+import { listInputSchema, detailInputSchema } from './schemas';
+import {
+  mapCategoryToContract,
+  mapEntryToContract,
+  yellowBookEntryInclude,
+  type YellowBookEntryWithRelations,
+} from './transformers';
+
+const t = initTRPC.context<Context>().create();
+
 export const appRouter = t.router({
-  getUserById: t.procedure.input(z.string()).query((opts) => {
-    console.log(opts.input);
-    console.log(users[opts.input]);
-    console.log(opts.input);
-    return users[opts.input];
-  }),
-  createUser: t.procedure
-    .input(
-      z.object({
-        name: z.string().min(3),
-        bio: z.string().max(142).optional(),
-      }),
-    )
-    .mutation((opts) => {
-      const id = Date.now().toString();
-      const user: User = { id, ...opts.input };
-      users[user.id] = user;
-      return user;
+  yellowBook: t.router({
+    list: t.procedure.input(listInputSchema).query(async ({ ctx, input }) => {
+      const entries = (await ctx.prisma.yellowBookEntry.findMany({
+        where: {
+          ...(input.categorySlug
+            ? {
+                category: {
+                  slug: input.categorySlug,
+                },
+              }
+            : {}),
+          ...(input.organizationType ? { kind: input.organizationType } : {}),
+          ...(input.tag
+            ? {
+                tags: {
+                  some: {
+                    tag: {
+                      label: {
+                        contains: input.tag,
+                        mode: Prisma.QueryMode.insensitive,
+                      },
+                    },
+                  },
+                },
+              }
+            : {}),
+          ...(input.search
+            ? {
+                OR: [
+                  { name: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                  { shortName: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                  { summary: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                  { description: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                  { streetAddress: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                  { district: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                  { province: { contains: input.search, mode: Prisma.QueryMode.insensitive } },
+                ],
+              }
+            : {}),
+        },
+        include: yellowBookEntryInclude,
+        orderBy: [{ name: 'asc' }],
+      })) as YellowBookEntryWithRelations[];
+
+      return entries.map((entry) => mapEntryToContract(entry));
     }),
-  getAllBusinesses: t.procedure.input(z.object({
-    search: z.string().optional(),
-    categoryId: z.string().optional(),
-  })).query(async ({input}) => {
-    const businesses = await prisma.business.findMany({
-      where:{
-        ...(input.search && {
-          name: {
-            contains: input.search,
-            mode: 'insensitive',
-          },
-        }),
-        ...(input.categoryId!=='All' && {
-          categoryId: input.categoryId,
-        }),
-      },
-    });
-    return businesses;
-  }),
-  getAllCategories: t.procedure.query(async (opts) => {
-    const categories = await prisma.category.findMany();
-    return categories;
+    categories: t.procedure.query(async ({ ctx }) => {
+      const categories = await ctx.prisma.yellowBookCategory.findMany({
+        orderBy: { name: 'asc' },
+      });
+
+      return categories.map(mapCategoryToContract);
+    }),
+    detail: t.procedure.input(detailInputSchema).query(async ({ ctx, input }) => {
+      const entry = await ctx.prisma.yellowBookEntry.findUnique({
+        where: { id: input.id },
+        include: yellowBookEntryInclude,
+      });
+
+      if (!entry) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Байгууллага олдсонгүй.' });
+      }
+
+      return mapEntryToContract(entry);
+    }),
   }),
 });
-// export type definition of API
 export type AppRouter = typeof appRouter;

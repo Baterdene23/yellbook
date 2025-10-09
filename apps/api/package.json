@@ -2,6 +2,14 @@
   "name": "@yellbook/api",
   "version": "0.0.1",
   "private": true,
+    "scripts": {
+    "predev": "prisma migrate deploy --schema prisma/schema.prisma",
+    "dev": "tsx watch --tsconfig tsconfig.app.json src/main.ts",
+    "start": "node dist/apps/api/main.js",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "prisma:seed": "prisma db seed --schema prisma/schema.prisma"
+  },
   "nx": {
     "targets": {
       "build": {
@@ -25,7 +33,7 @@
           ],
           "assets": [
             "apps/api/src/assets",
-            "apps/api/src/app/plugins/**/*"
+             "apps/api/src/app/plugins/**/*"
           ],
           "esbuildOptions": {
             "sourcemap": true,
@@ -128,9 +136,9 @@
   "dependencies": {
     "@fastify/autoload": "~6.0.3",
     "@fastify/cors": "^11.1.0",
+    "@fastify/helmet": "^13.0.2",
     "@fastify/sensible": "~6.0.2",
     "@prisma/client": "^6.16.2",
-    "@prisma/extension-accelerate": "^2.0.2",
     "@trpc/server": "^11.5.1",
     "fastify": "~5.2.1",
     "fastify-plugin": "~5.0.1",
