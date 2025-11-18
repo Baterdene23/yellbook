@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import { app } from './app/app';
+import 'dotenv/config';
+
 
 const host = process.env.HOST ?? 'localhost';
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;

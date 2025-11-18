@@ -3,12 +3,15 @@
   "version": "0.0.1",
   "private": true,
     "scripts": {
-    "predev": "prisma migrate deploy --schema prisma/schema.prisma",
-    "dev": "tsx watch --tsconfig tsconfig.app.json src/main.ts",
+    "predev": "prisma generate --schema prisma/schema.prisma && prisma migrate deploy --schema prisma/schema.prisma",
     "start": "node dist/apps/api/main.js",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
-    "prisma:seed": "prisma db seed --schema prisma/schema.prisma"
+    "prisma:seed": "prisma db seed --schema prisma/schema.prisma",
+    "dev": "tsx watch --env-file=.env --tsconfig tsconfig.app.json src/main.ts",
+    "postinstall": "prisma generate --schema prisma/schema.prisma"
+
+    
   },
   "nx": {
     "targets": {

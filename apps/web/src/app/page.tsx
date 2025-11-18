@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Clock,
@@ -32,6 +32,14 @@ const organizationTypeLabels: Record<OrganizationKind, string> = {
 };
 
 export default function Index() {
+  return (
+    <Suspense fallback={<HomePageFallback />}>
+      <IndexContent />
+    </Suspense>
+  );
+}
+
+function IndexContent() {
   const [inputValue, setInputValue] = useState("");
   const [searchTerm, setSearchTerm] = useQueryState("search", { defaultValue: "" });
   const [selectedCategory, setSelectedCategory] = useQueryState("category", { defaultValue: "all" });
@@ -519,6 +527,14 @@ export default function Index() {
           </div>
         </footer>
       </div>
+    </div>
+  );
+}
+
+function HomePageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+      Уншиж байна...
     </div>
   );
 }

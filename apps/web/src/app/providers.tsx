@@ -15,7 +15,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <ReactQueryStreamedHydration>
         <NuqsAdapter>{children}</NuqsAdapter>
       </ReactQueryStreamedHydration>
-      <ReactQueryDevtools />
+      {process.env.NODE_ENV === "development" ? <ReactQueryDevtools /> : null}
       <Toaster richColors />
     </QueryClientProvider>
   );

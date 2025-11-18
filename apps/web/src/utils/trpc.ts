@@ -4,6 +4,13 @@ import { toast } from 'sonner';
 import type { OrganizationKind, YellowBookCategory, YellowBookEntry } from '@lib/types';
 import { YellowBookCategorySchema, YellowBookEntrySchema } from '@lib/types';
 
+type ApiFetchOptions = RequestInit & {
+  next?: {
+    revalidate?: number | false;
+    tags?: string[];
+  };
+};
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -34,14 +41,11 @@ function getBaseUrl() {
   return process.env.INTERNAL_BACKEND_URL ?? browserBaseUrl;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Promise<T> {
   const response = await fetch(`${getBaseUrl()}${path}`, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    credentials: 'include',
+    headers: mergeHeaders(init.headers),
+    credentials: init.credentials ?? 'include',
   });
 
   if (!response.ok) {
@@ -53,6 +57,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 
+function mergeHeaders(headers?: HeadersInit): Headers {
+  const merged = new Headers(headers);
+
+  if (!merged.has('Content-Type')) {
+    merged.set('Content-Type', 'application/json');
+  }
+
+  return merged;
+}
+
 export type YellowBookListParams = {
   search?: string;
   categorySlug?: string;
@@ -60,7 +74,10 @@ export type YellowBookListParams = {
   tag?: string;
 };
 
-export async function fetchYellowBookList(params: YellowBookListParams): Promise<YellowBookEntry[]> {
+export async function fetchYellowBookList(
+  params: YellowBookListParams,
+  init?: ApiFetchOptions,
+): Promise<YellowBookEntry[]> {
   const url = new URL('/yellow-books', getBaseUrl());
 
   if (params.search) {
@@ -76,16 +93,16 @@ export async function fetchYellowBookList(params: YellowBookListParams): Promise
     url.searchParams.set('tag', params.tag);
   }
 
-  const data = await apiFetch<unknown>(`${url.pathname}${url.search}`);
+  const data = await apiFetch<unknown>(`${url.pathname}${url.search}`, init);
   return YellowBookEntrySchema.array().parse(data);
 }
 
-export async function fetchYellowBookCategories(): Promise<YellowBookCategory[]> {
-  const data = await apiFetch<unknown>('/yellow-books/categories');
+export async function fetchYellowBookCategories(init?: ApiFetchOptions): Promise<YellowBookCategory[]> {
+  const data = await apiFetch<unknown>('/yellow-books/categories', init);
   return YellowBookCategorySchema.array().parse(data);
 }
 
-export async function fetchYellowBookDetail(id: string): Promise<YellowBookEntry> {
-  const data = await apiFetch<unknown>(`/yellow-books/${id}`);
+export async function fetchYellowBookDetail(id: string, init?: ApiFetchOptions): Promise<YellowBookEntry> {
+  const data = await apiFetch<unknown>(`/yellow-books/${id}`, init);
   return YellowBookEntrySchema.parse(data);
 }

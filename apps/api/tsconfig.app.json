@@ -13,6 +13,12 @@
     }
   },
   "include": ["src/**/*.ts",
-              "src/app/plugins/**/*.ts"],
-  "exclude": ["eslint.config.js", "eslint.config.cjs", "eslint.config.mjs"]
+              "src/app/plugins/**/*.ts",
+              "../../libs/types/src/**/*.ts"],
+  "exclude": ["eslint.config.js", "eslint.config.cjs", "eslint.config.mjs"],
+  "references": [
+    {
+      "path": "../../libs/types/tsconfig.lib.json"
+    }
+  ]
 }
