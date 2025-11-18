@@ -1,24 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "outDir": "dist",
+    "baseUrl": "../../",
+    "outDir": "../../dist/apps/api",
     "module": "nodenext",
     "types": ["node"],
-    "rootDir": "src",
+    "rootDir": "../../",
     "moduleResolution": "nodenext",
-    "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo",
+    "tsBuildInfoFile": "../../dist/apps/api/tsconfig.app.tsbuildinfo",
     "paths": {
-      "@lib/types": ["../../libs/types/src/index.ts"]
+      "@lib/types": ["libs/types/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts",
-              "src/app/plugins/**/*.ts",
-              "../../libs/types/src/**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "src/app/plugins/**/*.ts",
+    "../../libs/types/src/**/*.ts"
+  ],
   "exclude": ["eslint.config.js", "eslint.config.cjs", "eslint.config.mjs"],
-  "references": [
-    {
-      "path": "../../libs/types/tsconfig.lib.json"
-    }
-  ]
+  "references": []
 }

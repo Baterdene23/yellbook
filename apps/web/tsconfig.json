@@ -27,7 +27,6 @@
     "rootDir": "../.."
   },
   "include": [
-
     "next-env.d.ts",
     "src/**/*.js",
     "src/**/*.jsx",
@@ -49,9 +48,5 @@
     "eslint.config.cjs",
     "eslint.config.mjs"
   ],
-  "references": [
-    {
-      "path": "../api"
-    }
-  ]
+  "references": []
 }

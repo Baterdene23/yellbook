@@ -1,24 +1,46 @@
-# Yellow Book Performance - November 2025
+Yellow Book Гүйцэтгэл – 2025 оны 11 сар
+Юу өөрчлөгдсөн бэ
 
-## What Changed
-- `/yellow-books` now opts into ISR with `revalidate = 60` and still streams its category and entries sections behind `<Suspense>` so cached shells ship immediately while data refreshes every minute (apps/web/src/app/yellow-books/page.tsx:45,100,109,226,276).
-- `/yellow-books/[id]` uses `generateStaticParams` plus cache tags to prerender detail pages and keep them fresh through the `/api/revalidate/yellow-books` endpoint, which can target either the full collection or individual entries (apps/web/src/app/yellow-books/[id]/page.tsx:24,31,45 and apps/web/src/app/api/revalidate/yellow-books/route.ts:19-49).
-- `/yellow-books/search` is intentionally SSR-only via `dynamic = "force-dynamic"` with a `MapClient` island that stays client-side; the map block sits inside `<Suspense>` so the list renders while the iframe hydrates (apps/web/src/app/yellow-books/search/page.tsx:4,8,46-58).
+/yellow-books хуудас одоо ISR (Incremental Static Regeneration) ашигладаг болсон бөгөөд revalidate = 60 гэж тохируулсан. Мөн категори болон контент жагсаалтууд нь <Suspense>-ийн цаана ачаалагддаг тул кэшлэгдсэн shell шууд харагдаж, өгөгдөл минут тутам шинэчлэгдэнэ.
+(apps/web/src/app/yellow-books/page.tsx:45,100,109,226,276)
 
-## Measurements
-Collected from the production build served via `PORT=4300 npm run start -w @yellbook/web` and Lighthouse desktop preset (`npx lighthouse ... --only-categories=performance --preset=desktop --chrome-flags="--headless --no-sandbox --disable-gpu"`). Reports and PNG screenshots live in `tmp/`.
+/yellow-books/[id] маршрут нь generateStaticParams болон cache tag-ууд ашиглан дэлгэрэнгүй хуудсуудыг урьдчилан үүсгэдэг, мөн /api/revalidate/yellow-books endpoint ашиглан бүх entries эсвэл зөвхөн нэг entry-г тусад нь revalidate хийх боломжтой.
+(apps/web/src/app/yellow-books/[id]/page.tsx:24,31,45 болон apps/web/src/app/api/revalidate/yellow-books/route.ts:19–49)
 
-| Route | Perf | TTFB | LCP | Artifacts |
-| --- | --- | --- | --- | --- |
-| `/yellow-books` | 95 | 158 ms | 0.74 s | `tmp/lighthouse-yellow-books.report.{json,html}`, `tmp/lighthouse-yellow-books.png` |
-| `/yellow-books/search` | 100 | 102 ms | 0.60 s | `tmp/lighthouse-yellow-books-search.report.{json,html}`, `tmp/lighthouse-yellow-books-search.png` |
+/yellow-books/search нь зориуд цэвэр SSR (server-side rendering) горимоор тохируулагдсан — dynamic = "force-dynamic". MapClient нь client-side island хэвээр үлддэг. Map iframe нь <Suspense> дотор байрладаг тул жагсаалт эхэлж render хийгдэж, map дараа нь hydrate болдог.
+(apps/web/src/app/yellow-books/search/page.tsx:4,8,46–58)
 
-## Why It Helped
-- ISR keeps the heavy listing data hot at the edge; combined with Suspense streaming, it cut TTFB for `/yellow-books` to ~158 ms even though API responses sometimes stall locally.
-- Search results only fetch once per request and feed both the server-rendered list and the client map, eliminating duplicate queries and letting the map hydrate independently, which lowered LCP to ~0.6 s.
-- Detail pages stay static and cache-tagged, so on-demand revalidation updates a single path without a full redeploy, keeping both TTFB and LCP predictable.
+Хэмжилтүүд
 
-## Next Risks
-- Local API still returns empty data; rerun Lighthouse with a seeded backend so the reported LCP reflects real content instead of skeletons.
-- Automate publishing of the Lighthouse JSON/HTML/PNG artifacts in CI so regressions are caught per PR.
-- Wire CMS/back-office saves to `/api/revalidate/yellow-books` so editors do not need to call the endpoint manually and ISR caches never drift beyond the 60 s window.
+Хэмжилтүүдийг production build-ийг:
+
+PORT=4300 npm run start -w @yellbook/web
+PORT=3000 npm run dev:web
+
+
+коммандаар ажиллуулж, Lighthouse desktop preset ашиглан дараах байдлаар цуглуулсан:
+
+npx lighthouse ... --only-categories=performance --preset=desktop \
+  --chrome-flags="--headless --no-sandbox --disable-gpu"
+
+
+Тайлан болон PNG зургууд tmp/ хавтсанд байгаа.
+
+Route	Performance	TTFB	LCP	Артефактууд
+/yellow-books	95	158 ms	0.74 s	tmp/lighthouse-yellow-books.report.{json,html}, tmp/lighthouse-yellow-books.png
+/yellow-books/search	100	102 ms	0.60 s	tmp/lighthouse-yellow-books-search.report.{json,html}, tmp/lighthouse-yellow-books-search.png
+Яагаад сайжрав?
+
+ISR нь томоохон жагсаалтын өгөгдлийг edge дээр халуун кэштэй байлгана. Suspense streaming-тэй хосолсноор /yellow-books-ийн TTFB ~158 ms болж эрс бага болсон (локал API заримдаа удааширдаг ч гэсэн).
+
+Search хуудсын query нь зөвхөн нэг удаа хийгдэж, серверийн жагсаалт болон client-side map-т хоёрдмол fetch хийхгүй болсон. Ингэснээр map дараа нь hydrate хийсэн ч LCP ~0.6 секунд болгож буурсан.
+
+Дэлгэрэнгүй хуудсууд static бөгөөд cache-tag-аар удирдагддаг тул on-demand revalidate зарчмаар зөвхөн нэг хуудас шинэчлэгдэх боломжтой. Ингэснээр TTFB болон LCP тогтвортой хэвээр үлддэг.
+
+Дараагийн эрсдэлүүд
+
+Локал API одоо хоосон өгөгдөл буцааж байгаа тул Lighthouse-ийн LCP нь skeleton-аас хамаарч “хэт бага” гарч байна. Жинхэнэ өгөгдөлтэй backend-ээр дахин хэмжих шаардлагатай.
+
+Lighthouse JSON/HTML/PNG тайлангуудыг CI дээр автоматаар нийтэлдэг болговол PR бүрт гүйцэтгэлийн бууралтыг шууд илрүүлнэ.
+
+CMS/back-office-с хийсэн save үйлдлүүдийг /api/revalidate/yellow-books endpoint-т шууд холбосноор редакторууд гараар дуудлага хийх шаардлагагүй болно, мөн ISR cache хэзээ ч 60 секундээс илүү хоцрохгүй.
