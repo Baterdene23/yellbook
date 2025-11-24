@@ -1,16 +1,20 @@
-import React from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
-export default function NotFoundPage() {
+export default function NotFound() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-8">Хүсэлтийн хуудас олдсонгүй</p>
-        <Link href="/" className="px-6 py-3 bg-yellow-600 text-white rounded hover:bg-yellow-700 inline-block">
-          Нүүр хуудас руу буцах
-        </Link>
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+      <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        Хуудас олдсонгүй
+      </h1>
+      <p className="text-gray-600 mb-6 text-center max-w-md">
+        Таны хайж буй хуудас олдсонгүй. Доорх товчыг дарж Шар номын жагсаалт руу буцна уу.
+      </p>
+      <Link href="/yellow-books">
+        <Button className="bg-yellow-500 hover:bg-yellow-600 text-white">
+          Шар ном руу очих
+        </Button>
+      </Link>
     </div>
   );
 }
