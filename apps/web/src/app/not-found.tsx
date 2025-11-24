@@ -7,11 +7,14 @@ export default function NotFound() {
       <h1 className="text-4xl font-bold text-gray-900 mb-4">
         Хуудас олдсонгүй
       </h1>
+
       <p className="text-gray-600 mb-6 text-center max-w-md">
-        Таны хайж буй хуудас олдсонгүй. Доорх товчыг дарж Шар номын жагсаалт руу буцна уу.
+        Таны хайж буй хуудас олдсонгүй. Доорх товчийг дарж Шар номын лавлах
+        руу буцна уу.
       </p>
+
       <Link href="/yellow-books">
-        <Button className="bg-yellow-500 hover:bg-yellow-600 text-white">
+        <Button className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3">
           Шар ном руу очих
         </Button>
       </Link>
