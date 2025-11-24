@@ -1,4 +1,3 @@
-// apps/web/app/not-found.tsx
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -15,8 +14,8 @@ export default function NotFound() {
       </p>
 
       <Link href="/yellow-books">
-        <Button className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3">
-          Шар ном руу очих
+        <Button className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3">
+          Шар номын жагсаалт руу буцах
         </Button>
       </Link>
     </div>
