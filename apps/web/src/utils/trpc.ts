@@ -45,7 +45,7 @@ async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Promise<T>
   const response = await fetch(`${getBaseUrl()}${path}`, {
     ...init,
     headers: mergeHeaders(init.headers),
-    credentials: init.credentials ?? 'include',
+    credentials: 'omit',
   });
 
   if (!response.ok) {
@@ -105,4 +105,52 @@ export async function fetchYellowBookCategories(init?: ApiFetchOptions): Promise
 export async function fetchYellowBookDetail(id: string, init?: ApiFetchOptions): Promise<YellowBookEntry> {
   const data = await apiFetch<unknown>(`/yellow-books/${id}`, init);
   return YellowBookEntrySchema.parse(data);
+}
+
+export type ReviewPayload = {
+  yellowBookEntryId: string;
+  rating: number;
+  title: string;
+  comment: string;
+  userId?: string;
+};
+
+export async function submitReview(payload: ReviewPayload) {
+  return apiFetch<{ id: string; createdAt: string }>('/reviews', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchReviews(entryId: string, init?: ApiFetchOptions) {
+  const data = await apiFetch<unknown>(`/reviews/${entryId}`, init);
+  return data;
+}
+
+export type OrganizationRegistrationPayload = {
+  name: string;
+  category: string;
+  city: string;
+  phone: string;
+  email: string;
+  message?: string;
+};
+
+export async function submitOrganizationRegistration(payload: OrganizationRegistrationPayload) {
+  return apiFetch<{ id: string; createdAt: string }>('/registrations', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export type AdminSessionPayload = {
+  email: string;
+  password: string;
+};
+
+export async function requestAdminSession(payload: AdminSessionPayload) {
+  return apiFetch<{ token: string; createdAt: string; message: string }>('/admin/sessions', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }

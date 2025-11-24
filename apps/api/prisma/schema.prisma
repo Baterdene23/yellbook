@@ -61,6 +61,7 @@ model YellowBookEntry {
   category       YellowBookCategory @relation(fields: [categoryId], references: [id])
   categoryId     String
   tags           YellowBookEntryTag[]
+  reviews        Review[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
@@ -72,4 +73,18 @@ model YellowBookEntryTag {
   tagId   String
 
   @@id([entryId, tagId])
+}
+
+model Review {
+  id                String           @id @default(uuid())
+  rating            Int
+  title             String
+  comment           String
+  userId            String?
+  yellowBookEntry   YellowBookEntry  @relation(fields: [yellowBookEntryId], references: [id], onDelete: Cascade)
+  yellowBookEntryId String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([yellowBookEntryId, userId])
 }

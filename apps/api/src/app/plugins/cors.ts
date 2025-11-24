@@ -3,8 +3,9 @@ import fp from 'fastify-plugin';
 
 const corsPlugin = fp(async (fastify) => {
   await fastify.register(cors, {
-    origin: true,
-    credentials: true,
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: false,
   });
 });
 

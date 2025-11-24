@@ -1,120 +1,248 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
-
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Phone } from "lucide-react";
+import {
+  Clock,
+  Facebook,
+  Globe,
+  Instagram,
+  Mail,
+  MapPin,
+  Phone,
+} from "lucide-react";
 
-import type { YellowBookEntry } from "@lib/types";
-import { fetchYellowBookList } from "@/utils/trpc";
-import { ORGANIZATION_LABELS } from "../_lib/filters";
+import { fetchYellowBookDetail } from "@/utils/trpc";
 
-export const dynamic = "force-static";
-export const revalidate = false; // SSG
+// Энэ page-ийг ISR маягаар cache-лана
+export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "Yellow Book — Дэлгэрэнгүй",
-  description: "Байгууллагын дэлгэрэнгүй мэдээлэл",
-};
-
-type Params = { id: string };
-
+// Build үед dynamic SSG хийхгүй — энэ нь CI дээр fetch алдаа гаргахгүй болгоно
 export async function generateStaticParams() {
-  try {
-    const entries = await fetchYellowBookList(
-      {},
-      {
-        cache: "force-cache",
-        next: {
-          revalidate: 60,
-        },
-      },
-    );
-
-    return entries.map((e: YellowBookEntry) => ({ id: e.id }));
-  } catch (error) {
-    console.error("yellow-books/[id] generateStaticParams failed", error);
-    return [];
-  }
+  return [];
 }
 
-export default async function YellowBookEntryPage({ params }: { params: Params }) {
-  const id = params.id;
-  const entries = await fetchYellowBookList({}, { cache: "force-cache", next: { revalidate: 60 } });
-  const entry = entries.find((e: YellowBookEntry) => e.id === id);
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const { id } = params;
+  const entry = await fetchYellowBookDetail(id, {
+    next: { tags: ["yellow-books-detail"] },
+  });
+
+  return {
+    title: `${entry.name} - ШАР НОМ`,
+    description: entry.summary,
+  };
+}
+
+export default async function YellowBookDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const { id } = params;
+  const entry = await fetchYellowBookDetail(id, {
+    next: { tags: ["yellow-books-detail"] },
+  }).catch(() => null);
 
   if (!entry) {
     notFound();
   }
 
-  const primaryPhone = entry.contacts.find((c) => c.type === "phone")?.value;
+  const phoneContact = entry.contacts.find((c) => c.type === "phone");
+  const emailContact = entry.contacts.find((c) => c.type === "email");
+  const websiteContact = entry.contacts.find((c) => c.type === "website");
+  const facebookContact = entry.contacts.find((c) => c.type === "facebook");
+  const instagramContact = entry.contacts.find((c) => c.type === "instagram");
+  const mapContact = entry.contacts.find((c) => c.type === "map");
 
   return (
-    <main className="container mx-auto px-4 py-10">
-      <div className="max-w-3xl">
-        <Card className="border border-border/60 bg-card/80">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between gap-3">
-              <Badge variant="outline" className="rounded-full text-xs font-semibold uppercase">
-                {entry.category.name}
-              </Badge>
-              <span className="text-xs font-medium uppercase text-muted-foreground">
-                {ORGANIZATION_LABELS[entry.organizationType]}
-              </span>
-            </div>
-
-            <h1 className="mt-4 text-2xl font-semibold text-foreground">{entry.name}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">{entry.summary}</p>
-
-            <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-              <div className="inline-flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-secondary" />
-                <span>
-                  {entry.address.streetAddress}, {entry.address.district}
-                </span>
-              </div>
-              {primaryPhone ? (
-                <div className="inline-flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-secondary" />
-                  <a href={`tel:${primaryPhone}`} className="text-secondary hover:underline">
-                    {primaryPhone}
-                  </a>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-6 flex gap-2">
-              <Link href="/yellow-books" prefetch={false}>
-                <Button variant="ghost">Буцах</Button>
-              </Link>
-              <a
-                href={entry.coordinates?.mapUrl ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-auto inline-flex items-center"
-              >
-                <Button variant="secondary" size="sm">Газрын зураг</Button>
-              </a>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-yellow-50 border-b-2 border-yellow-600 py-6">
+        <div className="container mx-auto px-4">
+          <Link href="/yellow-books">
+            <Button
+              variant="outline"
+              className="border-yellow-600 text-yellow-600 hover:bg-yellow-50 mb-4"
+            >
+              ← Буцах
+            </Button>
+          </Link>
+          <h1 className="text-4xl font-bold text-gray-800">{entry.name}</h1>
+          <p className="text-gray-600 mt-2">{entry.category.name}</p>
+        </div>
       </div>
-    </main>
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2">
+            <Card className="bg-white border-2 border-gray-300 mb-6">
+              <CardContent className="p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Танилцуулга
+                </h2>
+                <p className="text-gray-700 leading-relaxed">
+                  {entry.description || entry.summary}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-2 border-gray-300 mb-6">
+              <CardContent className="p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Холбоо барих мэдээлэл
+                </h2>
+
+                <div className="space-y-4">
+                  {entry.address && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold text-gray-800">
+                          Байршил
+                        </h3>
+                        <p className="text-gray-700">
+                          {entry.address.streetAddress}
+                          <br />
+                          {entry.address.district}, {entry.address.province}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {phoneContact && (
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold text-gray-800">
+                          Утасны дугаар
+                        </h3>
+                        <a
+                          href={`tel:${phoneContact.value}`}
+                          className="text-yellow-600 hover:underline font-semibold"
+                        >
+                          {phoneContact.value}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {emailContact && (
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold text-gray-800">Имэйл</h3>
+                        <a
+                          href={`mailto:${emailContact.value}`}
+                          className="text-yellow-600 hover:underline"
+                        >
+                          {emailContact.value}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {entry.hours && (
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-semibold text-gray-800">
+                          Ажлын цаг
+                        </h3>
+                        <p className="text-gray-700">{entry.hours}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <Card className="bg-white border-2 border-gray-300 sticky top-4">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">
+                  Холбоо барих
+                </h2>
+
+                <div className="space-y-3 mb-6">
+                  {phoneContact && (
+                    <a href={`tel:${phoneContact.value}`}>
+                      <Button className="w-full bg-yellow-600 text-white hover:bg-yellow-700">
+                        Дуудах
+                      </Button>
+                    </a>
+                  )}
+
+                  {emailContact && (
+                    <a href={`mailto:${emailContact.value}`}>
+                      <Button
+                        variant="outline"
+                        className="w-full border-yellow-600 text-yellow-600 hover:bg-yellow-50"
+                      >
+                        Имэйл илгээх
+                      </Button>
+                    </a>
+                  )}
+
+                  {mapContact && (
+                    <a
+                      href={mapContact.value}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button
+                        variant="outline"
+                        className="w-full border-yellow-600 text-yellow-600 hover:bg-yellow-50"
+                      >
+                        Газрын зураг
+                      </Button>
+                    </a>
+                  )}
+                </div>
+
+                <div className="border-t border-gray-300 pt-6">
+                  <h3 className="font-semibold text-gray-800 mb-3">
+                    Сошиал сүлжээнүүд
+                  </h3>
+                  <div className="flex gap-3">
+                    {facebookContact && (
+                      <a
+                        href={facebookContact.value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Facebook className="h-6 w-6 text-yellow-600 hover:text-yellow-700 cursor-pointer" />
+                      </a>
+                    )}
+                    {instagramContact && (
+                      <a
+                        href={instagramContact.value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Instagram className="h-6 w-6 text-yellow-600 hover:text-yellow-700 cursor-pointer" />
+                      </a>
+                    )}
+                    {websiteContact && (
+                      <a
+                        href={websiteContact.value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Globe className="h-6 w-6 text-yellow-600 hover:text-yellow-700 cursor-pointer" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

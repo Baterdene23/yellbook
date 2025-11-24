@@ -1,22 +1,13 @@
 "use client";
 
-import { QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryStreamedHydration } from '@tanstack/react-query-next-experimental';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
-import { Toaster } from 'sonner';
+import { QueryClientProvider } from "@tanstack/react-query";
+import { PropsWithChildren } from "react";
+import { queryClient } from "@/utils/trpc";
 
-import { queryClient } from '@/utils/trpc';
-
-export default function Providers({ children }: { children: React.ReactNode }) {
-    
+export function Providers({ children }: PropsWithChildren) {
   return (
     <QueryClientProvider client={queryClient}>
-      <ReactQueryStreamedHydration>
-        <NuqsAdapter>{children}</NuqsAdapter>
-      </ReactQueryStreamedHydration>
-      {process.env.NODE_ENV === "development" ? <ReactQueryDevtools /> : null}
-      <Toaster richColors />
+      {children}
     </QueryClientProvider>
   );
 }

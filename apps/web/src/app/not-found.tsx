@@ -1,21 +1,14 @@
-﻿import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import React from "react";
+import Link from "next/link";
 
-export default function NotFound() {
+export default function NotFoundPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <h1 className="text-3xl font-semibold text-foreground">Page not found</h1>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          The page you are looking for could not be located. Check the URL or head back to the directory.
-        </p>
-        <Link
-          href="/"
-          prefetch={false}
-          className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-secondary hover:border-secondary hover:text-secondary/80"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Return home
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
+        <p className="text-xl text-gray-600 mb-8">Хүсэлтийн хуудас олдсонгүй</p>
+        <Link href="/" className="px-6 py-3 bg-yellow-600 text-white rounded hover:bg-yellow-700 inline-block">
+          Нүүр хуудас руу буцах
         </Link>
       </div>
     </div>

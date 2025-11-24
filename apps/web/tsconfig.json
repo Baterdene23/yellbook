@@ -18,6 +18,9 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/utils/*": ["./src/utils/*"],
       "@lib/types": ["../../libs/types/src/index.ts"]
     },
     "typeRoots": ["../../node_modules/@types", "./node_modules/@types"],

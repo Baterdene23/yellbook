@@ -10,6 +10,20 @@ Yellow Book Гүйцэтгэл – 2025 оны 11 сар
 /yellow-books/search нь зориуд цэвэр SSR (server-side rendering) горимоор тохируулагдсан — dynamic = "force-dynamic". MapClient нь client-side island хэвээр үлддэг. Map iframe нь <Suspense> дотор байрладаг тул жагсаалт эхэлж render хийгдэж, map дараа нь hydrate болдог.
 (apps/web/src/app/yellow-books/search/page.tsx:4,8,46–58)
 
+### Lab5-ийн өөрчлөлтүүд
+
+- **/yellow-books**:
+  - ISR (Incremental Static Regeneration) тохиргоог 60 секундээр тохируулсан.
+  - Streamed section болон `<Suspense>` ашиглан TTFB болон LCP-г сайжруулсан.
+
+- **/yellow-books/[id]**:
+  - `generateStaticParams` ашиглан SSG тохиргоог сайжруулсан.
+  - On-demand revalidation API зам нэмсэн (`/api/revalidate/yellow-books`).
+
+- **/yellow-books/search**:
+  - SSR болон client map island тохиргоог сайжруулсан.
+  - MapClient-д илүү оновчтой fallback нэмсэн.
+
 Хэмжилтүүд
 
 Хэмжилтүүдийг production build-ийг:
