@@ -13,7 +13,6 @@ import { fetchYellowBookCategories, fetchYellowBookList } from "@/utils/trpc";
 import type { YellowBookCategory, YellowBookEntry } from "@lib/types";
 import { BusinessListSkeleton } from "@/components/business-list-skeleton";
 import { CategoryFiltersSkeleton } from "@/components/category-filters-skeleton";
-export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   const [inputValue, setInputValue] = useState("");

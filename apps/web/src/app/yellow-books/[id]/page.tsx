@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 
 import { fetchYellowBookDetail } from "@/utils/trpc";
-export const dynamic = "force-dynamic";
 
 // Энэ page-ийг ISR маягаар cache-лана
 export const revalidate = 60;
