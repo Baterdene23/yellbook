@@ -3,13 +3,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json nx.json tsconfig.base.json ./
+COPY apps/api ./apps/api
+COPY libs ./libs
 
-COPY . .
+RUN npm install
 
-# Build API
-RUN npm run build:api
+# Build API with Nx
+RUN npm run build -- --filter=@yellbook/api
 
 # Runtime stage
 FROM node:20-alpine
@@ -27,21 +28,21 @@ ENV NODE_ENV=production
 RUN npm ci --only=production
 
 # Copy built app from builder
-COPY --from=builder /app/dist/apps/api ./dist
+COPY --from=builder /app/dist/apps/api ./dist/apps/api
 
 # Copy Prisma schema and migrations
 COPY apps/api/prisma ./prisma
 
 # Generate Prisma client
-RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD wget --quiet --tries=1 --spider http://localhost:3001 || exit 1
 
 EXPOSE 3001
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/api/main.js"]
