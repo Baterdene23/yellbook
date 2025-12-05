@@ -76,7 +76,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.${{ matrix.image }}
+          file: Dockerfile.${{ matrix.image }}
           push: true
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/yellbook/${{ matrix.image }}:${{ github.sha }}
@@ -91,11 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - image: api
-            dockerfile: Dockerfile.api
-          - image: web
-            dockerfile: Dockerfile.web
+        image: [api, web]
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout Repository
@@ -108,7 +104,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./${{ matrix.dockerfile }}
+          file: Dockerfile.${{ matrix.image }}
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
