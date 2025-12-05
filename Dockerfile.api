@@ -9,8 +9,11 @@ COPY libs ./libs
 
 RUN npm install
 
-# Build API with Nx
-RUN npm run build -- --filter=@yellbook/api
+# Build API
+WORKDIR /app/apps/api
+RUN npm run build
+
+WORKDIR /app
 
 # Runtime stage
 FROM node:20-alpine
@@ -28,7 +31,8 @@ ENV NODE_ENV=production
 RUN npm ci --only=production
 
 # Copy built app from builder
-COPY --from=builder /app/dist/apps/api ./dist/apps/api
+COPY --from=builder /app/dist/apps/api/main.js ./dist/apps/api/
+COPY --from=builder /app/dist/apps/api/. ./dist/apps/api/
 
 # Copy Prisma schema and migrations
 COPY apps/api/prisma ./prisma

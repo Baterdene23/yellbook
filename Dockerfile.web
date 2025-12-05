@@ -9,8 +9,11 @@ COPY libs ./libs
 
 RUN npm install
 
-# Build Web with Nx
-RUN npm run build -- --filter=@yellbook/web
+# Build Web
+WORKDIR /app/apps/web
+RUN npm run build
+
+WORKDIR /app
 
 # Runtime stage
 FROM node:20-alpine
@@ -28,11 +31,11 @@ ENV NODE_ENV=production
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy built app from builder
-COPY --from=builder /app/dist/apps/web ./dist/apps/web
-COPY apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/public ./apps/web/public/
 
 # Create start script
-RUN echo '#!/bin/sh\ncd /app/apps/web\nnode ../../dist/apps/web/server.js' > /app/start.sh && chmod +x /app/start.sh
+RUN echo '#!/bin/sh\ncd /app\nnode_modules/.bin/next start' > /app/start.sh && chmod +x /app/start.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -45,4 +48,4 @@ ENV NEXT_PUBLIC_BACKEND_URL=http://api:3001
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
 
-CMD ["node", "dist/apps/web/server.js"]
+CMD ["node_modules/.bin/next", "start", "-p", "3000"]
