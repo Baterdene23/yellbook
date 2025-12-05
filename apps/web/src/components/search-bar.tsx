@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { YellowBookCategory } from '@lib/types';
+import type { YellowBookCategory } from '@lib/types';
 
 interface SearchBarProps {
-  categories: YellowBookCategory[];
+  categories: YellowBookCategory[] | null | undefined;
 }
 
 export function SearchBar({ categories }: SearchBarProps) {
@@ -67,7 +67,7 @@ export function SearchBar({ categories }: SearchBarProps) {
             >
               Бүх үйлчилгээ
             </Button>
-            {categories.map((category) => (
+            {categories && categories.map((category: YellowBookCategory) => (
               <Button
                 key={category.id}
                 variant={selectedCategory === category.slug ? "default" : "outline"}
