@@ -27,8 +27,8 @@ COPY package.json package-lock.json ./
 ENV NODE_ENV=production
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy built app from builder - Next.js output is in dist/apps/web/.next
-COPY --from=builder /app/dist/apps/web/.next ./.next
+# Copy built app from builder - Next.js output is in apps/web/.next (not dist/)
+COPY --from=builder /app/apps/web/.next ./.next
 COPY --from=builder /app/apps/web/public ./public/
 COPY --from=builder /app/apps/web/package.json ./package.json
 
