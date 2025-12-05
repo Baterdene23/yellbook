@@ -8,7 +8,7 @@ import { fetchYellowBookCategories, fetchYellowBookList } from "@/utils/trpc";
 import type { YellowBookEntry } from "@lib/types";
 import { SearchBar } from "@/components/search-bar";
 
-export const revalidate = 3600; // ISR - revalidate every hour
+export const revalidate = 3600;
 
 export default async function HomePage() {
   let entries: YellowBookEntry[] = [];
@@ -23,7 +23,6 @@ export default async function HomePage() {
     categories = categoriesData || [];
   } catch (error) {
     console.error("Failed to fetch home page data:", error);
-    // Fallback to empty data - page will render but with no results
   }
 
   return (
