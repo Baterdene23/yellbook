@@ -15,8 +15,8 @@ permissions:
   id-token: write
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  AWS_REGION: ap-southeast-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com
   API_ECR_REPOSITORY: yellbook/api
   WEB_ECR_REPOSITORY: yellbook/web
 
@@ -132,7 +132,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'image'
-          image-ref: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/yellbook/api:${{ github.sha }}
+          image-ref: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results.json'
         continue-on-error: true
@@ -161,7 +161,7 @@ jobs:
       - name: Check ECR images
         run: |
           echo "=== API Image ===" 
-          aws ecr describe-images --repository-name yellbook/api --region us-east-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
+          aws ecr describe-images --repository-name yellbook/api --region ap-southeast-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
           echo ""
           echo "=== Web Image ===" 
-          aws ecr describe-images --repository-name yellbook/web --region us-east-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
+          aws ecr describe-images --repository-name yellbook/web --region ap-southeast-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
