@@ -27,12 +27,13 @@ COPY package.json package-lock.json ./
 ENV NODE_ENV=production
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy built app from builder - Next.js output
-COPY --from=builder /app/dist/apps/web ./ 
+# Copy built app from builder - Next.js output is in dist/apps/web/.next
+COPY --from=builder /app/dist/apps/web/.next ./.next
 COPY --from=builder /app/apps/web/public ./public/
+COPY --from=builder /app/apps/web/package.json ./package.json
 
-# Create start script
-RUN echo '#!/bin/sh\ncd /app\nnode_modules/.bin/next start' > /app/start.sh && chmod +x /app/start.sh
+# Create necessary directories if they don't exist
+RUN mkdir -p /app/.next/cache && chmod -R 755 /app/.next
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
