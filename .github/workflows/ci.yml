@@ -16,7 +16,6 @@ permissions:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com
   API_ECR_REPOSITORY: yellbook/api
   WEB_ECR_REPOSITORY: yellbook/web
 
@@ -53,13 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - image: api
-            dockerfile: Dockerfile.api
-            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api
-          - image: web
-            dockerfile: Dockerfile.web
-            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/web
+        image: [api, web]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Repository
@@ -83,16 +76,16 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./${{ matrix.dockerfile }}
+          file: ./Dockerfile.${{ matrix.image }}
           push: true
           tags: |
-            ${{ matrix.ecr-repo }}:${{ github.sha }}
-            ${{ matrix.ecr-repo }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/yellbook/${{ matrix.image }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/yellbook/${{ matrix.image }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Image digest
-        run: echo "Image pushed to ${{ matrix.ecr-repo }}:${{ github.sha }}"
+        run: echo "Image pushed to ${{ steps.login-ecr.outputs.registry }}/yellbook/${{ matrix.image }}:${{ github.sha }}"
 
   docker-build-pr:
     runs-on: ubuntu-latest
@@ -128,11 +121,24 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get ECR registry
+        id: ecr-registry
+        run: |
+          REGISTRY=$(aws ecr get-authorization-token --query authorizationData[0].proxyEndpoint --output text | sed 's|https://||')
+          echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'image'
-          image-ref: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:${{ github.sha }}
+          image-ref: ${{ steps.ecr-registry.outputs.registry }}/yellbook/api:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-results.json'
         continue-on-error: true
@@ -148,9 +154,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -161,7 +164,7 @@ jobs:
       - name: Check ECR images
         run: |
           echo "=== API Image ===" 
-          aws ecr describe-images --repository-name yellbook/api --region ap-southeast-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
+          aws ecr describe-images --repository-name yellbook/api --region ${{ env.AWS_REGION }} | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}' || true
           echo ""
           echo "=== Web Image ===" 
-          aws ecr describe-images --repository-name yellbook/web --region ap-southeast-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
+          aws ecr describe-images --repository-name yellbook/web --region ${{ env.AWS_REGION }} | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}' || true
