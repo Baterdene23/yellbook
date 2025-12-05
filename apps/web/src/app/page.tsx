@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { fetchYellowBookCategories, fetchYellowBookList } from "@/utils/trpc";
-import type { YellowBookEntry } from "@lib/types";
+import type { YellowBookEntry, YellowBookCategory } from "@lib/types";
 import { SearchBar } from "@/components/search-bar";
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
   let entries: YellowBookEntry[] = [];
-  let categories = [];
+  let categories: YellowBookCategory[] = [];
 
   try {
     const [entriesData, categoriesData] = await Promise.all([
