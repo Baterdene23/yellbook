@@ -56,10 +56,10 @@ jobs:
         include:
           - image: api
             dockerfile: Dockerfile.api
-            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/yellbook/api
+            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api
           - image: web
             dockerfile: Dockerfile.web
-            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/yellbook/web
+            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/web
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Repository
