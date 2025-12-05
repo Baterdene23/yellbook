@@ -25,9 +25,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
+
   const entry = await fetchYellowBookDetail(id, {
     next: { tags: ["yellow-books-detail"] },
   });
@@ -41,9 +42,10 @@ export async function generateMetadata({
 export default async function YellowBookDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
+
   const entry = await fetchYellowBookDetail(id, {
     next: { tags: ["yellow-books-detail"] },
   }).catch(() => null);
@@ -172,7 +174,7 @@ export default async function YellowBookDetailPage({
                   {phoneContact && (
                     <a href={`tel:${phoneContact.value}`}>
                       <Button className="w-full bg-yellow-600 text-white hover:bg-yellow-700">
-                        Дуудах
+                        Залгах
                       </Button>
                     </a>
                   )}

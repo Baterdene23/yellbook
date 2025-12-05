@@ -12,6 +12,13 @@ on:
 permissions:
   actions: read
   contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  API_ECR_REPOSITORY: yellbook/api
+  WEB_ECR_REPOSITORY: yellbook/web
 
 jobs:
   lint-and-build:
@@ -39,7 +46,122 @@ jobs:
         run: npm run typecheck
 
       - name: Build API & Web
-        # Хэрэв API URL хэрэгтэй бол эндээс дамжуулна
-        # env:
-        #   NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
         run: npm run build
+
+  docker-build-push:
+    needs: lint-and-build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: api
+            dockerfile: Dockerfile.api
+            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/yellbook/api
+          - image: web
+            dockerfile: Dockerfile.web
+            ecr-repo: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/yellbook/web
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image - ${{ matrix.image }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ matrix.ecr-repo }}:${{ github.sha }}
+            ${{ matrix.ecr-repo }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image digest
+        run: echo "Image pushed to ${{ matrix.ecr-repo }}:${{ github.sha }}"
+
+  docker-build-pr:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: api
+            dockerfile: Dockerfile.api
+          - image: web
+            dockerfile: Dockerfile.web
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (PR check) - ${{ matrix.image }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./${{ matrix.dockerfile }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            yellbook-${{ matrix.image }}:${{ github.sha }}
+            yellbook-${{ matrix.image }}:latest
+
+  security-scan:
+    needs: docker-build-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/yellbook/api:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.json'
+        continue-on-error: true
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.json'
+        continue-on-error: true
+
+  health-check:
+    needs: docker-build-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check ECR images
+        run: |
+          echo "=== API Image ===" 
+          aws ecr describe-images --repository-name yellbook/api --region us-east-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'
+          echo ""
+          echo "=== Web Image ===" 
+          aws ecr describe-images --repository-name yellbook/web --region us-east-1 | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}'

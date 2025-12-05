@@ -10,7 +10,7 @@ import { BusinessListSkeleton } from "@/components/business-list-skeleton";
 import YellowBooksMapIsland from "@/components/yellow-books-map";
 
 // Энэ route-ийг заавал SSR болгоно
-export const dynamic = "force-dynamic";
+//export const dynamic = "force-dynamic";
 
 async function SearchResults({ query }: { query: string }) {
   const entries = await fetchYellowBookList(
