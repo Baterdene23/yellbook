@@ -29,14 +29,22 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
 
-  const entry = await fetchYellowBookDetail(id, {
-    next: { tags: ["yellow-books-detail"] },
-  });
+  try {
+    const entry = await fetchYellowBookDetail(id, {
+      next: { tags: ["yellow-books-detail"] },
+    });
 
-  return {
-    title: `${entry.name} - ШАР НОМ`,
-    description: entry.summary,
-  };
+    return {
+      title: `${entry.name} - ШАР НОМ`,
+      description: entry.summary,
+    };
+  } catch (error) {
+    console.error("Failed to fetch metadata for:", id, error);
+    return {
+      title: "ШАР НОМ",
+      description: "Монголын байгууллагуудын мэдээллийн сан",
+    };
+  }
 }
 
 export default async function YellowBookDetailPage({

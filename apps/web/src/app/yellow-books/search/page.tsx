@@ -13,13 +13,21 @@ import YellowBooksMapIsland from "@/components/yellow-books-map";
 //export const dynamic = "force-dynamic";
 
 async function SearchResults({ query }: { query: string }) {
-  const entries = await fetchYellowBookList(
-    { search: query },
-    {
-      // SSR – cache: 'no-store'
-      cache: "no-store",
-    },
-  );
+  let entries: YellowBookEntry[] = [];
+  
+  try {
+    entries = await fetchYellowBookList(
+      { search: query },
+      {
+        // SSR – cache: 'no-store'
+        cache: "no-store",
+      },
+    );
+  } catch (error) {
+    console.error("Failed to fetch search results:", error);
+    // Return empty array on fetch failure
+    entries = [];
+  }
 
   if (entries.length === 0) {
     return (

@@ -13,15 +13,23 @@ export const revalidate = 60;
 
 // STREAMED SECTION – async server component
 async function YellowBooksContent() {
-  const entries = await fetchYellowBookList(
-    {},
-    {
-      next: {
-        revalidate: 60,
-        tags: ["yellow-books-list"],
+  let entries: YellowBookEntry[] = [];
+  
+  try {
+    entries = await fetchYellowBookList(
+      {},
+      {
+        next: {
+          revalidate: 60,
+          tags: ["yellow-books-list"],
+        },
       },
-    },
-  );
+    );
+  } catch (error) {
+    console.error("Failed to fetch yellow books:", error);
+    // Return empty array on fetch failure - page will render with no results
+    entries = [];
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
