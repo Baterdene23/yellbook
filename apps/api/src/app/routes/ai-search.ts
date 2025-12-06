@@ -1,0 +1,198 @@
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
+import { createClient } from 'redis';
+
+interface SearchResult {
+  id: string;
+  name: string;
+  summary: string;
+  distance: number;
+  similarity: number;
+}
+
+interface AISearchRequest {
+  query: string;
+  limit?: number;
+  useCache?: boolean;
+}
+
+const prisma = new PrismaClient();
+const redis = createClient({
+  socket: {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+  },
+  password: process.env.REDIS_PASSWORD,
+});
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const EMBEDDING_MODEL = 'text-embedding-3-small';
+const CACHE_TTL = 3600; // 1 hour
+
+// Connect to Redis
+redis.on('error', (err: Error) => console.error('Redis error:', err));
+
+async function getEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await axios.post(
+      'https://api.openai.com/v1/embeddings',
+      {
+        model: EMBEDDING_MODEL,
+        input: text,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    return response.data.data[0].embedding;
+  } catch (error) {
+    console.error('Embedding error:', error);
+    throw error;
+  }
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
+  const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+  const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+
+  if (magnitudeA === 0 || magnitudeB === 0) return 0;
+  return dotProduct / (magnitudeA * magnitudeB);
+}
+
+async function searchYellowBooks(req: AISearchRequest): Promise<SearchResult[]> {
+  const { query, limit = 5, useCache = true } = req;
+
+  // Validate query
+  if (!query || query.trim().length === 0) {
+    throw new Error('Query is required');
+  }
+
+  if (query.length > 500) {
+    throw new Error('Query too long (max 500 characters)');
+  }
+
+  // Check cache
+  if (useCache) {
+    try {
+      const cached = await redis.get(`ai-search:${query}`);
+      if (cached) {
+        console.log(`📦 Cache hit: ${query}`);
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      console.error('Cache lookup error:', error);
+    }
+  }
+
+  // Get query embedding
+  const queryEmbedding = await getEmbedding(query.trim());
+
+  // Find similar businesses
+  const businesses = (await prisma.$queryRaw`
+    SELECT id, name, summary, embedding 
+    FROM "YellowBookEntry" 
+    WHERE embedding IS NOT NULL 
+      AND array_length(embedding, 1) > 0
+    LIMIT 1000
+  `) as Array<{
+    id: string;
+    name: string;
+    summary: string;
+    embedding: number[];
+  }>;
+
+  // Calculate similarity and sort
+  const results = businesses
+    .map((business) => ({
+      id: business.id,
+      name: business.name,
+      summary: business.summary,
+      similarity: cosineSimilarity(queryEmbedding, business.embedding),
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit)
+    .map((item, index) => ({
+      id: item.id,
+      name: item.name,
+      summary: item.summary,
+      similarity: item.similarity,
+      distance: index,
+    }));
+
+  // Cache results
+  if (useCache) {
+    try {
+      await redis.setEx(
+        `ai-search:${query}`,
+        CACHE_TTL,
+        JSON.stringify(results)
+      );
+      console.log(`💾 Cached: ${query}`);
+    } catch (error) {
+      console.error('Cache save error:', error);
+    }
+  }
+
+  return results;
+}
+
+export async function aiSearchRoutes(
+  fastify: FastifyInstance
+) {
+  // Connect Redis
+  if (!redis.isOpen) {
+    await redis.connect();
+  }
+
+  // POST /api/ai/yellow-books/search
+  fastify.post(
+    '/api/ai/yellow-books/search',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const body = request.body as AISearchRequest;
+        const results = await searchYellowBooks(body);
+        reply.send(results);
+      } catch (error) {
+        console.error('Search error:', error);
+        const err = error as Error;
+        reply.status(400).send({
+          error: err.message || 'Search failed',
+        });
+      }
+    }
+  );
+
+  // DELETE /api/ai/yellow-books/cache
+  fastify.delete(
+    '/api/ai/yellow-books/cache',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const queryParams = request.query as { query?: string };
+        const { query } = queryParams;
+
+        if (query) {
+          await redis.del(`ai-search:${query}`);
+          reply.send({ message: `Cache cleared for query: ${query}` });
+        } else {
+          const keys = await redis.keys('ai-search:*');
+          if (keys.length > 0) {
+            await redis.del(keys);
+          }
+          reply.send({ message: 'All cache cleared' });
+        }
+      } catch (error) {
+        console.error('Cache clear error:', error);
+        const err = error as Error;
+        reply.status(400).send({
+          error: err.message || 'Cache clear failed',
+        });
+      }
+    }
+  );
+}
