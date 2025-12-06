@@ -19,6 +19,20 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: yellbook-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build:
       context: .
@@ -27,6 +41,9 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://yellbook:yellbook@db:5432/yellbook
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3001
@@ -34,6 +51,8 @@ services:
       - "3001:3001"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001"]
@@ -63,6 +82,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   default:

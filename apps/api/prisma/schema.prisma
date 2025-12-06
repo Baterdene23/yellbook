@@ -62,6 +62,8 @@ model YellowBookEntry {
   categoryId     String
   tags           YellowBookEntryTag[]
   reviews        Review[]
+  embedding      Float[]            @default([])
+  embeddedAt     DateTime?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
