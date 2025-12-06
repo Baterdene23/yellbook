@@ -29,22 +29,104 @@ Internet → Route53 → ALB (Ingress) → VPC
 
 ## Step 1: Create EKS Cluster
 
-### Option A: Using eksctl (Recommended)
+### Status: ✅ In Progress
 
+The EKS cluster is currently being created via CloudFormation stack `yellbook-eks-stack` in ap-southeast-1.
+
+**Current Progress:**
+- EKS Cluster: ✅ CREATE_COMPLETE (created at 05:34:51 UTC)
+- NodeGroup: ⏳ CREATE_IN_PROGRESS (started at 05:34:52 UTC)
+- Estimated time: 10-15 more minutes
+
+**CloudFormation Template Used:**
+- Location: `k8s/eks-cluster-cloudformation.yaml`
+- Features:
+  - VPC with public/private subnets across 2 AZs
+  - t3.medium instances (2 nodes, scalable to 4)
+  - Security groups configured
+  - IAM roles for cluster and nodes
+  - Disabled cluster logging (removed to pass validation)
+
+**Monitor Progress:**
 ```bash
-eksctl create cluster \
-  --name yellbook-eks \
+aws cloudformation describe-stacks \
+  --stack-name yellbook-eks-stack \
   --region ap-southeast-1 \
-  --node-type t3.medium \
-  --nodes 2 \
-  --nodes-min 1 \
-  --nodes-max 4 \
-  --enable-ssm
+  --query 'Stacks[0].StackStatus'
 ```
 
-### Option B: Using CloudFormation
+When complete, stack status will be `CREATE_COMPLETE`.
 
-Refer to AWS documentation for CloudFormation template.
+## Step 1b: After Cluster Creation - Execute Deployment Scripts
+
+Once the CloudFormation stack shows `CREATE_COMPLETE`, run these scripts in order:
+
+### Step 1b-1: Update Kubeconfig
+
+```bash
+aws eks update-kubeconfig \
+  --name yellbook-eks \
+  --region ap-southeast-1
+```
+
+Verify cluster connectivity:
+```bash
+kubectl cluster-info
+kubectl get nodes
+```
+
+### Step 1b-2: Install ALB Ingress Controller
+
+```bash
+cd k8s
+bash setup-alb-controller.sh
+```
+
+This installs AWS Load Balancer Controller in `kube-system` namespace.
+
+### Step 1b-3: Deploy Application
+
+```bash
+bash post-cluster-deployment.sh
+```
+
+This script:
+1. Creates `yellowbooks` namespace
+2. Sets up IRSA (IAM Roles for Service Accounts)
+3. Creates ECR secret
+4. Applies all manifests in order:
+   - Namespace and ServiceAccount
+   - ConfigMaps and Secrets
+   - PostgreSQL StatefulSet
+   - Prisma Migration Job
+   - API Deployment
+   - Web Deployment
+   - HPA
+   - ALB Ingress
+
+### Step 1b-4: Verify Deployment
+
+```bash
+# Check all pods are running
+kubectl get pods -n yellowbooks
+
+# Expected output:
+# NAME                              READY   STATUS    RESTARTS   AGE
+# postgres-0                         1/1     Running   0          2m
+# yellbook-api-xxxxx                 1/1     Running   0          1m
+# yellbook-api-xxxxx                 1/1     Running   0          1m
+# yellbook-web-xxxxx                 1/1     Running   0          1m
+# yellbook-web-xxxxx                 1/1     Running   0          1m
+
+# Check services
+kubectl get svc -n yellowbooks
+
+# Check Ingress (wait for ALB to be provisioned)
+kubectl get ingress -n yellowbooks -o wide
+
+# Check HPA status
+kubectl get hpa -n yellowbooks
+```
 
 ## Step 2: Setup OIDC Provider
 
