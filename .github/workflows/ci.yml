@@ -35,8 +35,24 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
+      - name: Cache Nx artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            .nx/cache
+          key: ${{ runner.os }}-nx-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nx-
+
       - name: Install Dependencies
         run: npm install
+
+      - name: Nx Reset (prepare cache)
+        run: npx nx reset
+
+      - name: Generate Nx Project Graph
+        run: npx nx graph --file=project-graph.json
 
       - name: Run Lint
         run: npm run lint 2>/dev/null || true
