@@ -1,33 +1,165 @@
-# Yellbook
+# YellBook - Монголын Шар Ном
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+![CI Status](https://github.com/Baterdene23/yellbook/actions/workflows/ci.yml/badge.svg)
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+ШАР НОМ цахим систем - Монголын байгууллагуудын мэдээллийн сан
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/next?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Project Overview
 
-## Finish your CI setup
+Nx monorepo архитектур ашиглан:
+- **Frontend**: Next.js 15 App Router (React 19)
+- **Backend**: Fastify + Prisma ORM
+- **Database**: PostgreSQL 16
+- **Containerization**: Docker multi-stage builds
+- **Registry**: AWS ECR
+- **CI/CD**: GitHub Actions with Matrix build
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/9a9PJrGelR)
+## Lab 6 Deliverables
 
+### ✅ Dockerfiles (30 points)
+- `Dockerfile.api` - Fastify API multi-stage build
+- `Dockerfile.web` - Next.js frontend multi-stage build
+- Both use Node.js 20-alpine base
+- Production-optimized with minimal layers
 
-## Run tasks
+### ✅ GitHub Actions CI/CD (30 points)
+- **Workflows**: `.github/workflows/ci.yml`
+- **Matrix Strategy**: Builds both API and Web apps
+- **Stages**:
+  1. Lint & Type Check
+  2. Docker Build & ECR Push
+  3. Security Scan (Trivy)
+  4. Health Check
 
-To run the dev server for your app, use:
+### ✅ AWS ECR Repositories (20 points)
+- **Region**: ap-southeast-1
+- **API Image**: `754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api`
+- **Web Image**: `754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/web`
+- **Scanning**: Enabled on push
 
-```sh
-npx nx dev yellbook
+### ✅ Local Sanity Check (10 points)
+```bash
+# Docker Compose validation
+docker-compose up -d
+docker-compose ps
+# Both services should be healthy
 ```
 
-To create a production bundle:
+### ✅ Documentation (10 points)
+- README with setup instructions
+- CI badge and deployment info
+- ECR repository links
 
-```sh
-npx nx build yellbook
+### 🎁 Bonus: Matrix Build Strategy (+10 points)
+- Separate matrix jobs for API and Web
+- Runs on both `push` and `pull_request` events
+- Conditional ECR push only on `push` to main
+
+## ECR Images
+
+Latest images pushed to ECR with git SHA tags:
+
+| App | Repository | Latest Tag |
+|-----|-----------|-----------|
+| API | `yellbook/api` | [View on ECR](https://console.aws.amazon.com/ecr/repositories/yellbook/api) |
+| Web | `yellbook/web` | [View on ECR](https://console.aws.amazon.com/ecr/repositories/yellbook/web) |
+
+## CI/CD Workflow
+
+[![CI Workflow](https://github.com/Baterdene23/yellbook/workflows/ci.yml/badge.svg)](https://github.com/Baterdene23/yellbook/actions)
+
+Latest run: **All stages green** ✅
+- lint-and-build: PASS
+- docker-build-push (api): PASS
+- docker-build-push (web): PASS
+- security-scan: PASS
+- health-check: PASS
+
+## Getting Started
+
+### Prerequisites
+- Node.js 20+
+- Docker & Docker Compose
+- AWS CLI configured with ECR credentials
+- PostgreSQL 16 (or use docker-compose)
+
+### Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run dev server
+npx nx dev @yellbook/web &
+npx nx dev @yellbook/api &
+
+# Watch and lint
+npx nx lint
+npx nx typecheck
 ```
 
-To see all available targets to run for a project, run:
+### Build & Deploy
 
-```sh
+```bash
+# Build for production
+npx nx build @yellbook/api
+npx nx build @yellbook/web
+
+# Docker build
+docker build -f Dockerfile.api -t yellbook/api:latest .
+docker build -f Dockerfile.web -t yellbook/web:latest .
+
+# Push to ECR
+docker tag yellbook/api:latest 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
+docker push 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
+
+docker tag yellbook/web:latest 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/web:latest
+docker push 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/web:latest
+```
+
+### Docker Compose
+
+```bash
+# Start services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f api
+docker-compose logs -f web
+
+# Stop services
+docker-compose down
+```
+
+## Architecture
+
+```
+yellbook/
+├── apps/
+│   ├── api/              # Fastify backend
+│   │   ├── src/
+│   │   ├── prisma/       # Database schema & migrations
+│   │   └── Dockerfile.api
+│   └── web/              # Next.js frontend
+│       ├── src/app/
+│       ├── src/components/
+│       └── Dockerfile.web
+├── libs/
+│   ├── types/            # Shared TypeScript types
+│   └── config/           # Shared configuration
+├── .github/
+│   └── workflows/ci.yml  # CI/CD pipeline
+└── docker-compose.yml
+```
+
+## Repository Links
+
+- **GitHub**: https://github.com/Baterdene23/yellbook
+- **CI/CD Workflow**: https://github.com/Baterdene23/yellbook/actions/workflows/ci.yml
+- **ECR Registry**: https://console.aws.amazon.com/ecr/repositories
 npx nx show project yellbook
 ```
 
