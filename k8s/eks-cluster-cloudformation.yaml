@@ -9,12 +9,12 @@ Parameters:
   
   NodeInstanceType:
     Type: String
-    Default: t3.medium
+    Default: t3.small
     Description: EC2 instance type for worker nodes
   
   DesiredNodeCount:
     Type: Number
-    Default: 2
+    Default: 1
     Description: Desired number of worker nodes
 
 Resources:
