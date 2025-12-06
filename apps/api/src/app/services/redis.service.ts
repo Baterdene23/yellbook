@@ -1,3 +1,4 @@
+/* eslint-disable @nx/enforce-module-boundaries */
 import { createClient, RedisClientType } from 'redis';
 
 export class RedisService {
@@ -58,7 +59,8 @@ export class RedisService {
   }
 
   async expire(key: string, seconds: number): Promise<boolean> {
-    return (await this.client.expire(key, seconds)) === 1;
+    const result = await this.client.expire(key, seconds);
+    return result as boolean;
   }
 
   async ttl(key: string): Promise<number> {

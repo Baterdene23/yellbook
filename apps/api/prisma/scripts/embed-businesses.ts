@@ -33,13 +33,22 @@ async function getEmbedding(text: string): Promise<number[]> {
 async function embedAllBusinesses() {
   console.log('🚀 Businesses embedding эхлүүлээ...\n');
 
-  const businesses = await prisma.yellowBookEntry.findMany({
-    where: {
-      embedding: {
-        equals: [],
-      },
-    },
-  });
+  // Get all businesses without embedding using raw query
+  const businesses = (await prisma.$queryRaw`
+    SELECT id, name, "shortName", summary, description, "categoryId", district, province
+    FROM "YellowBookEntry"
+    WHERE embedding IS NULL OR array_length(embedding, 1) IS NULL OR array_length(embedding, 1) = 0
+    LIMIT 1000
+  `) as Array<{
+    id: string;
+    name: string;
+    shortName?: string | null;
+    summary: string;
+    description?: string | null;
+    categoryId: string;
+    district: string;
+    province: string;
+  }>;
 
   console.log(`📊 Embedding хэрэгтэй: ${businesses.length} businesses\n`);
 
@@ -54,7 +63,6 @@ async function embedAllBusinesses() {
         business.shortName,
         business.summary,
         business.description,
-        business.category,
         business.district,
         business.province,
       ]
@@ -65,14 +73,13 @@ async function embedAllBusinesses() {
 
       const embedding = await getEmbedding(text);
 
-      // Database-д хадгалнa
-      await prisma.yellowBookEntry.update({
-        where: { id: business.id },
-        data: {
-          embedding,
-          embeddedAt: new Date(),
-        },
-      });
+      // Database-д хадгалнa - raw SQL ашиглана
+      await prisma.$executeRaw`
+        UPDATE "YellowBookEntry" 
+        SET embedding = ${JSON.stringify(embedding)}::float8[], 
+            "embeddedAt" = NOW()
+        WHERE id = ${business.id}
+      `;
 
       completed++;
       console.log(`✅ [${completed}/${businesses.length}] ${business.name}\n`);
@@ -91,24 +98,6 @@ async function embedAllBusinesses() {
   console.log(`   ❌ Failed: ${failed}`);
 
   await prisma.$disconnect();
-}
-
-// Alternative:Local embedding model (Ollama)
-async function getEmbeddingLocal(text: string): Promise<number[]> {
-  try {
-    const response = await axios.post(
-      'http://localhost:11434/api/embeddings',
-      {
-        model: 'nomic-embed-text',
-        prompt: text,
-      }
-    );
-
-    return response.data.embedding;
-  } catch (error) {
-    console.error('Local embedding error:', error);
-    throw error;
-  }
 }
 
 // Run embedding
