@@ -1,0 +1,72 @@
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-1
+  CLUSTER_NAME: yellbook-eks
+  ECR_REGISTRY: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::754029048634:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --name ${{ env.CLUSTER_NAME }} \
+          --region ${{ env.AWS_REGION }}
+
+    - name: Create ECR secret
+      run: |
+        kubectl create secret docker-registry ecr-secret \
+          --docker-server=${{ env.ECR_REGISTRY }} \
+          --docker-username=AWS \
+          --docker-password=$(aws ecr get-login-password --region ${{ env.AWS_REGION }}) \
+          -n yellowbooks \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/manifests/00-namespace.yaml
+        kubectl apply -f k8s/manifests/01-configmap-secret.yaml
+        kubectl apply -f k8s/manifests/02-postgres.yaml
+        sleep 30
+        kubectl apply -f k8s/manifests/03-migration-job.yaml
+        sleep 10
+        kubectl apply -f k8s/manifests/04-api-deployment.yaml
+        kubectl apply -f k8s/manifests/05-web-deployment.yaml
+        kubectl apply -f k8s/manifests/06-hpa.yaml
+        kubectl apply -f k8s/manifests/07-ingress.yaml
+
+    - name: Wait for deployments
+      run: |
+        kubectl rollout status deployment/api -n yellowbooks --timeout=5m
+        kubectl rollout status deployment/web -n yellowbooks --timeout=5m
+
+    - name: Check pod status
+      run: |
+        kubectl get pods -n yellowbooks
+        kubectl get svc -n yellowbooks
+        kubectl get ingress -n yellowbooks
+
+    - name: Get ALB endpoint
+      run: |
+        echo "Waiting for ALB to be ready..."
+        kubectl get ingress -n yellowbooks -w

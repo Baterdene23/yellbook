@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migration
+  namespace: yellowbooks
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: yellowbooks-sa
+      restartPolicy: Never
+      containers:
+      - name: migrate
+        image: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
+        imagePullPolicy: Always
+        command: 
+          - /bin/sh
+          - -c
+          - |
+            npm run typecheck
+            npx prisma migrate deploy
+            npx prisma db seed || true
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: yellowbooks-config
+              key: DATABASE_URL
+        - name: NODE_ENV
+          value: production
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      imagePullSecrets:
+      - name: ecr-secret
