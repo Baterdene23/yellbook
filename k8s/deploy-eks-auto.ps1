@@ -54,7 +54,7 @@ $stackComplete = $false
 
 while ((Get-Date) - $startTime -lt [timespan]::FromSeconds($MaxWaitTime)) {
     $status = Get-StackStatus
-    $elapsed = ((Get-Date) - $startTime).TotalMinutes
+    # $elapsed = ((Get-Date) - $startTime).TotalMinutes  # Used for monitoring
     
     if ($status -eq "ERROR") {
         Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Status: CHECKING..." -ForegroundColor Yellow
