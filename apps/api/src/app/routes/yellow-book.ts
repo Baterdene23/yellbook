@@ -57,6 +57,7 @@ const yellowBooksRoute: FastifyPluginAsync = async (fastify) => {
       },
       include: yellowBookEntryInclude,
       orderBy: [{ name: 'asc' }],
+      take: query.limit,
     })) as YellowBookEntryWithRelations[];
 
     return entries.map((entry) => mapEntryToContract(entry));

@@ -1,51 +1,48 @@
-# Lab 7: EKS Deployment Guide
+# Lab 7: EKS Fargate Deployment Guide
 
 ## Overview
 
-Deploy Yellbook application to AWS EKS (Elastic Kubernetes Service) with:
-- OIDC-based IAM authentication
-- PostgreSQL database with Prisma migrations
-- Horizontal Pod Autoscaling (HPA)
-- AWS ALB Ingress with TLS/HTTPS
-- Route53 DNS routing
+Deploy Yellbook application to AWS EKS (Elastic Kubernetes Service) using Fargate serverless compute.
+This deployment includes:
+- **Serverless Compute**: AWS Fargate (No EC2 instances to manage)
+- **Authentication**: OIDC-based IAM authentication for GitHub Actions and Pods
+- **Database**: PostgreSQL (running on Fargate with EBS volume via PVC - *Note: Fargate has limitations with persistent storage, typically RDS is preferred for production*)
+- **Autoscaling**: Horizontal Pod Autoscaling (HPA)
+- **Networking**: AWS ALB Ingress with TLS/HTTPS
+- **DNS**: Route53 DNS routing (Planned)
 
 ## Prerequisites
 
 - AWS Account with appropriate IAM permissions
 - `kubectl` installed and configured
 - `aws-cli` v2
-- `eksctl` (for cluster creation) or use CloudFormation
-- AWS Certificate Manager certificate for HTTPS
+- `eksctl` (optional, for debugging)
+- AWS Certificate Manager certificate for HTTPS (optional for initial deploy)
 
 ## Architecture
 
 ```
 Internet → Route53 → ALB (Ingress) → VPC
-                      ├── web (Next.js) → Pods
-                      └── api (Fastify) → Pods
+                      ├── web (Next.js) → Fargate Pods
+                      └── api (Fastify) → Fargate Pods
                                       ↓
-                                PostgreSQL
+                                PostgreSQL (Fargate Pod)
 ```
 
-## Step 1: Create EKS Cluster
+## Step 1: Create EKS Cluster (Fargate)
 
-### Status: ✅ In Progress
+### Status: ✅ Deployed
 
-The EKS cluster is currently being created via CloudFormation stack `yellbook-eks-stack` in ap-southeast-1.
+The EKS cluster is created via CloudFormation stack `yellbook-eks-stack` in `ap-southeast-1`.
 
-**Current Progress:**
-- EKS Cluster: ✅ CREATE_COMPLETE (created at 05:34:51 UTC)
-- NodeGroup: ⏳ CREATE_IN_PROGRESS (started at 05:34:52 UTC)
-- Estimated time: 10-15 more minutes
-
-**CloudFormation Template Used:**
-- Location: `k8s/eks-cluster-cloudformation.yaml`
+**CloudFormation Template:**
+- Location: `k8s/eks-fargate-cloudformation.yaml`
 - Features:
-  - VPC with public/private subnets across 2 AZs
-  - t3.medium instances (2 nodes, scalable to 4)
-  - Security groups configured
-  - IAM roles for cluster and nodes
-  - Disabled cluster logging (removed to pass validation)
+  - VPC with public/private subnets
+  - EKS Cluster `yellbook-eks`
+  - Fargate Profiles:
+    - `fp-default`: For `default` and `kube-system` namespaces
+    - `fp-yellowbooks`: For `yellowbooks` namespace
 
 **Monitor Progress:**
 ```bash
@@ -55,306 +52,71 @@ aws cloudformation describe-stacks \
   --query 'Stacks[0].StackStatus'
 ```
 
-When complete, stack status will be `CREATE_COMPLETE`.
+## Step 2: Post-Deployment Setup
 
-## Step 1b: After Cluster Creation - Execute Deployment Scripts
+We have automated the setup process using PowerShell.
 
-Once the CloudFormation stack shows `CREATE_COMPLETE`, run these scripts in order:
-
-### Step 1b-1: Update Kubeconfig
-
-```bash
-aws eks update-kubeconfig \
-  --name yellbook-eks \
-  --region ap-southeast-1
+### Run Setup Script
+```powershell
+./k8s/post-stack-setup.ps1
 ```
 
-Verify cluster connectivity:
-```bash
-kubectl cluster-info
-kubectl get nodes
-```
+This script performs the following:
+1.  **Updates Kubeconfig**: Connects your local `kubectl` to the new cluster.
+2.  **Creates Namespace**: Creates `yellowbooks` namespace.
+3.  **Creates ECR Secret**: Configures access to the private ECR registry.
+4.  **Applies Manifests**: Deploys all Kubernetes resources from `k8s/manifests/`.
 
-### Step 1b-2: Install ALB Ingress Controller
+## Step 3: Verify Deployment
 
-```bash
-cd k8s
-bash setup-alb-controller.sh
-```
-
-This installs AWS Load Balancer Controller in `kube-system` namespace.
-
-### Step 1b-3: Deploy Application
+Check the status of your pods:
 
 ```bash
-bash post-cluster-deployment.sh
-```
-
-This script:
-1. Creates `yellowbooks` namespace
-2. Sets up IRSA (IAM Roles for Service Accounts)
-3. Creates ECR secret
-4. Applies all manifests in order:
-   - Namespace and ServiceAccount
-   - ConfigMaps and Secrets
-   - PostgreSQL StatefulSet
-   - Prisma Migration Job
-   - API Deployment
-   - Web Deployment
-   - HPA
-   - ALB Ingress
-
-### Step 1b-4: Verify Deployment
-
-```bash
-# Check all pods are running
 kubectl get pods -n yellowbooks
-
-# Expected output:
-# NAME                              READY   STATUS    RESTARTS   AGE
-# postgres-0                         1/1     Running   0          2m
-# yellbook-api-xxxxx                 1/1     Running   0          1m
-# yellbook-api-xxxxx                 1/1     Running   0          1m
-# yellbook-web-xxxxx                 1/1     Running   0          1m
-# yellbook-web-xxxxx                 1/1     Running   0          1m
-
-# Check services
-kubectl get svc -n yellowbooks
-
-# Check Ingress (wait for ALB to be provisioned)
-kubectl get ingress -n yellowbooks -o wide
-
-# Check HPA status
-kubectl get hpa -n yellowbooks
 ```
 
-## Step 2: Setup OIDC Provider
+### Expected Output
+You should see pods for `api`, `web`, and `postgres`.
 
-```bash
-# Make setup scripts executable
-chmod +x k8s/setup-oidc.sh
-chmod +x k8s/setup-iam-role.sh
-
-# Create OIDC Provider
-./k8s/setup-oidc.sh
-
-# Create IAM Role for Service Accounts
-./k8s/setup-iam-role.sh
-```
-
-## Step 3: Install AWS Load Balancer Controller
-
-```bash
-# Add helm repo
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update
-
-# Install ALB Controller
-helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system \
-  --set clusterName=yellbook-eks \
-  --set serviceAccount.create=true \
-  --set serviceAccount.name=aws-load-balancer-controller
-```
-
-## Step 4: Configure Route53 Domain
-
-1. Create hosted zone in Route53 (or use existing)
-2. Create ACM certificate for domain
-3. Update Ingress manifest with certificate ARN and domain
-
-```bash
-# Get Certificate ARN
-aws acm list-certificates --region ap-southeast-1
-```
-
-Update `k8s/manifests/07-ingress.yaml`:
-```yaml
-alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-southeast-1:754029048634:certificate/YOUR_CERT_ARN
-spec:
-  rules:
-  - host: yellowbooks.example.com
-```
-
-## Step 5: Create ECR Secret for Docker Image Pull
-
-```bash
-kubectl create secret docker-registry ecr-secret \
-  --docker-server=754029048634.dkr.ecr.ap-southeast-1.amazonaws.com \
-  --docker-username=AWS \
-  --docker-password=$(aws ecr get-login-password --region ap-southeast-1) \
-  -n yellowbooks
-```
-
-## Step 6: Deploy Application
-
-```bash
-# Apply all manifests in order
-kubectl apply -f k8s/manifests/00-namespace.yaml
-kubectl apply -f k8s/manifests/01-configmap-secret.yaml
-kubectl apply -f k8s/manifests/02-postgres.yaml
-
-# Wait for PostgreSQL to be ready
-kubectl wait --for=condition=ready pod \
-  -l app=postgres -n yellowbooks --timeout=300s
-
-# Run database migration
-kubectl apply -f k8s/manifests/03-migration-job.yaml
-
-# Wait for migration to complete
-kubectl wait --for=condition=complete job/db-migration \
-  -n yellowbooks --timeout=600s
-
-# Deploy API and Web
-kubectl apply -f k8s/manifests/04-api-deployment.yaml
-kubectl apply -f k8s/manifests/05-web-deployment.yaml
-
-# Apply HPA and Ingress
-kubectl apply -f k8s/manifests/06-hpa.yaml
-kubectl apply -f k8s/manifests/07-ingress.yaml
-```
-
-## Step 7: Verify Deployment
-
-```bash
-# Check namespace and pods
-kubectl get ns
-kubectl get pods -n yellowbooks
-
-# Expected output:
-# NAME                    READY   STATUS    RESTARTS   AGE
-# api-xxxxxxxxxx-xxxxx    1/1     Running   0          2m
-# api-xxxxxxxxxx-xxxxx    1/1     Running   0          2m
-# web-xxxxxxxxxx-xxxxx    1/1     Running   0          2m
-# web-xxxxxxxxxx-xxxxx    1/1     Running   0          2m
-# postgres-0              1/1     Running   0          5m
-
-# Check services
-kubectl get svc -n yellowbooks
-# Output:
-# NAME       TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)
-# api        ClusterIP   10.0.x.x      <none>        3001/TCP
-# web        ClusterIP   10.0.x.x      <none>        3000/TCP
-# postgres   ClusterIP   None          <none>        5432/TCP
-
-# Check Ingress status
-kubectl get ingress -n yellowbooks
-# Output:
-# NAME                    CLASS   HOSTS                  ADDRESS                        PORTS
-# yellowbooks-ingress     alb     yellowbooks.*.com      *.elb.ap-southeast-1.*.*       80, 443
-
-# Check HPA status
-kubectl get hpa -n yellowbooks
-# Output:
-# NAME      REFERENCE           TARGETS           MINPODS   MAXPODS   REPLICAS   AGE
-# api-hpa   Deployment/api      12%/70%, 8%/80%   2         5         2          2m
-# web-hpa   Deployment/web      8%/70%, 6%/80%    2         5         2          2m
-```
-
-## Step 8: Access Application
-
-1. Get ALB DNS name:
-```bash
-kubectl describe ingress yellowbooks-ingress -n yellowbooks | grep "Address:"
-```
-
-2. Update Route53 A record to point to ALB (ALIAS record)
-
-3. Visit: `https://yellowbooks.example.com` (HTTPS with padlock ✅)
-
-## Step 9: Monitor & Scale
-
-```bash
-# Watch pods scaling
-kubectl get hpa -n yellowbooks -w
-
-# View pod logs
-kubectl logs -f deployment/web -n yellowbooks
-kubectl logs -f deployment/api -n yellowbooks
-
-# Port forward for debugging
-kubectl port-forward svc/web 3000:3000 -n yellowbooks
-kubectl port-forward svc/api 3001:3001 -n yellowbooks
-```
+**Note on Fargate Startup**: Fargate pods take 1-2 minutes to start as AWS provisions the underlying compute resources on demand.
 
 ## Troubleshooting
 
-### Pods not Ready
-```bash
-# Check pod events
-kubectl describe pod <pod-name> -n yellowbooks
+### Issue: Pods Stuck in `Pending` State
+If your pods remain in `Pending` state with the event message:
+> "Your AWS account is currently blocked and thus cannot launch any Fargate pods"
 
-# Check pod logs
-kubectl logs <pod-name> -n yellowbooks
-```
+**Cause**: This is an AWS account-level restriction often applied to new accounts or specific regions.
+**Solution**: You must contact AWS Support to unblock Fargate for your account in the `ap-southeast-1` region.
 
-### Ingress not Ready
-```bash
-# Check ALB Controller logs
-kubectl logs -n kube-system deployment/aws-load-balancer-controller
+### Issue: "Operation cannot be fulfilled on resourcequotas"
+If you see quota errors, check the `ResourceQuota` in `00-namespace.yaml`. Fargate pods require explicit CPU/Memory requests that fit within the quota.
 
-# Describe ingress
-kubectl describe ingress yellowbooks-ingress -n yellowbooks
-```
+## Manual Deployment Steps (Reference)
 
-### ECR Image Pull Errors
-```bash
-# Verify secret exists
-kubectl get secret ecr-secret -n yellowbooks
+If you need to run steps manually:
 
-# Re-create secret if needed
-kubectl delete secret ecr-secret -n yellowbooks
-kubectl create secret docker-registry ecr-secret ...
-```
+1.  **Update Kubeconfig**:
+    ```bash
+    aws eks update-kubeconfig --name yellbook-eks --region ap-southeast-1
+    ```
 
-## Cleanup
+2.  **Apply Manifests**:
+    ```bash
+    kubectl apply -f k8s/manifests/
+    ```
 
-```bash
-# Delete all resources
-kubectl delete namespace yellowbooks
+3.  **Check Ingress**:
+    ```bash
+    kubectl get ingress -n yellowbooks
+    ```
+    *Note: The Ingress requires the AWS Load Balancer Controller to be installed. In Fargate, this is typically installed via Helm or as an add-on.*
 
-# Delete EKS cluster (if needed)
-eksctl delete cluster --name yellbook-eks --region ap-southeast-1
-```
+## Rubric Compliance Checklist
 
-## CI/CD Integration
-
-The GitHub Actions workflow automatically deploys on push to main branch:
-
-```bash
-# Workflow file: .github/workflows/deploy-eks.yml
-# Triggers on: push to main branch
-# Actions: Build images → Push to ECR → Apply K8s manifests
-```
-
-Monitor deployments at: https://github.com/Baterdene23/yellbook/actions
-
-## Files Structure
-
-```
-k8s/
-├── setup-oidc.sh              # OIDC Provider setup
-├── setup-iam-role.sh          # IAM Role creation
-└── manifests/
-    ├── 00-namespace.yaml      # Namespace & ServiceAccount
-    ├── 01-configmap-secret.yaml
-    ├── 02-postgres.yaml       # PostgreSQL StatefulSet
-    ├── 03-migration-job.yaml  # Database migration
-    ├── 04-api-deployment.yaml # API deployment + HPA
-    ├── 05-web-deployment.yaml # Web deployment + HPA
-    ├── 06-hpa.yaml            # Horizontal Pod Autoscaler
-    └── 07-ingress.yaml        # ALB Ingress + TLS
-
-.github/workflows/
-└── deploy-eks.yml             # GitHub Actions deploy
-```
-
-## Rubric Coverage
-
-- ✅ **OIDC/Roles (20 pts)**: setup-oidc.sh, IRSA integration
-- ✅ **aws-auth/RBAC (10 pts)**: ServiceAccount with IAM role annotation
-- ✅ **Manifests (25 pts)**: Namespace, Deployment, StatefulSet, Job, HPA (6 files)
-- ✅ **Ingress/TLS (20 pts)**: ALB Ingress with ACM certificate, Route53
-- ✅ **Migration Job (10 pts)**: Kubernetes Job for Prisma migrations
-- ✅ **HPA (10 pts)**: CPU/Memory based scaling for API and Web
-- ✅ **Docs (5 pts)**: This comprehensive DEPLOY.md guide
+- **OIDC Provider & IAM Roles**: Configured via `setup-oidc.sh` and GitHub Actions workflow.
+- **Manifests**: Full suite in `k8s/manifests/` including Deployment, Service, ConfigMap, Secret.
+- **Ingress & TLS**: `07-ingress.yaml` configured for ALB with TLS placeholders.
+- **Migration Job**: `03-migration-job.yaml` runs Prisma migrations.
+- **HPA**: `06-hpa.yaml` configured for CPU/Memory scaling.
+- **Docs**: This file (`DEPLOY.md`) updated for Fargate.

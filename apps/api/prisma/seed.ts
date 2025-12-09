@@ -362,6 +362,19 @@ async function seed() {
   }
 
   console.log('✅ Seed finished');
+
+  // Seed Admin User
+  const adminEmail = 'admin@yellbook.io';
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {},
+    create: {
+      email: adminEmail,
+      name: 'Admin User',
+      role: 'ADMIN',
+    },
+  });
+  console.log(`✅ Admin user seeded: ${adminUser.email}`);
 }
 
 

@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   revalidatePath(`/yellow-books/${id}`);
 
   // Жагсаалтын хуудас
-  revalidatePath("/yellow-books");
+  revalidatePath("/");
 
   // Tag-тай fetch-үүдийг ч зэрэг invalidate-лэнэ
   revalidateTag("yellow-books-list");

@@ -7,6 +7,7 @@ export const listInputSchema = z.object({
   categorySlug: z.string().trim().optional(),
   organizationType: OrganizationKindSchema.optional(),
   tag: z.string().trim().optional(),
+  limit: z.coerce.number().min(1).max(100).optional(),
 });
 
 export const detailInputSchema = z.object({

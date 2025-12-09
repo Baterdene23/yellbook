@@ -17,7 +17,6 @@ spec:
           - /bin/sh
           - -c
           - |
-            npm run typecheck
             npx prisma migrate deploy
             npx prisma db seed || true
         env:

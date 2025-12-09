@@ -74,5 +74,5 @@ export function createHref(current: FilterState, overrides: Partial<FilterState>
   }
 
   const query = params.toString();
-  return query ? `/yellow-books?${query}` : "/yellow-books";
+  return query ? `/?${query}` : "/";
 }

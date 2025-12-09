@@ -158,9 +158,9 @@ jobs:
         continue-on-error: true
 
   health-check:
-    needs: docker-build-push
+    needs: [lint-and-build, docker-build-push, security-scan]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -169,10 +169,56 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Check ECR images
+      - name: Generate Health Check Report
         run: |
-          echo "=== API Image ===" 
-          aws ecr describe-images --repository-name yellbook/api --region ${{ env.AWS_REGION }} | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}' || true
-          echo ""
-          echo "=== Web Image ===" 
-          aws ecr describe-images --repository-name yellbook/web --region ${{ env.AWS_REGION }} | jq '.imageDetails[0] | {digest: .imageDigest, size: .imageSizeInBytes, tags: .imageTags}' || true
+          echo "# 🏥 CI/CD Health Check Report" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          
+          LINT_STATUS="${{ needs.lint-and-build.result }}"
+          DOCKER_STATUS="${{ needs.docker-build-push.result }}"
+          SECURITY_STATUS="${{ needs.security-scan.result }}"
+          
+          if [ "$LINT_STATUS" == "success" ]; then LINT_ICON="✅ Passed"; else LINT_ICON="❌ Failed"; fi
+          if [ "$DOCKER_STATUS" == "success" ]; then DOCKER_ICON="✅ Passed"; elif [ "$DOCKER_STATUS" == "skipped" ]; then DOCKER_ICON="⏭️ Skipped"; else DOCKER_ICON="❌ Failed"; fi
+          if [ "$SECURITY_STATUS" == "success" ]; then SECURITY_ICON="✅ Passed"; elif [ "$SECURITY_STATUS" == "skipped" ]; then SECURITY_ICON="⏭️ Skipped"; else SECURITY_ICON="❌ Failed"; fi
+          
+          echo "| Lint & Build | $LINT_ICON |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Build & Push | $DOCKER_ICON |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Scan | $SECURITY_ICON |" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts Status (ECR)" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$DOCKER_STATUS" == "success" ]; then
+            echo "| Service | Repository | Tags | Size (MB) | Digest |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|---|---|---|" >> $GITHUB_STEP_SUMMARY
+            
+            # API Image
+            API_INFO=$(aws ecr describe-images --repository-name yellbook/api --region ${{ env.AWS_REGION }} --query 'sort_by(imageDetails, &imagePushedAt)[-1]' 2>/dev/null || echo "null")
+            if [ "$API_INFO" != "null" ]; then
+              API_TAGS=$(echo $API_INFO | jq -r '.imageTags | join(", ")')
+              API_SIZE=$(echo $API_INFO | jq -r '.imageSizeInBytes')
+              API_SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $API_SIZE/1048576}")
+              API_DIGEST=$(echo $API_INFO | jq -r '.imageDigest' | cut -c 1-12)
+              echo "| **API** | \`yellbook/api\` | $API_TAGS | $API_SIZE_MB MB | \`$API_DIGEST...\` |" >> $GITHUB_STEP_SUMMARY
+            else
+               echo "| **API** | \`yellbook/api\` | ❌ Not Found | - | - |" >> $GITHUB_STEP_SUMMARY
+            fi
+  
+            # Web Image
+            WEB_INFO=$(aws ecr describe-images --repository-name yellbook/web --region ${{ env.AWS_REGION }} --query 'sort_by(imageDetails, &imagePushedAt)[-1]' 2>/dev/null || echo "null")
+            if [ "$WEB_INFO" != "null" ]; then
+              WEB_TAGS=$(echo $WEB_INFO | jq -r '.imageTags | join(", ")')
+              WEB_SIZE=$(echo $WEB_INFO | jq -r '.imageSizeInBytes')
+              WEB_SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $WEB_SIZE/1048576}")
+              WEB_DIGEST=$(echo $WEB_INFO | jq -r '.imageDigest' | cut -c 1-12)
+              echo "| **Web** | \`yellbook/web\` | $WEB_TAGS | $WEB_SIZE_MB MB | \`$WEB_DIGEST...\` |" >> $GITHUB_STEP_SUMMARY
+            else
+               echo "| **Web** | \`yellbook/web\` | ❌ Not Found | - | - |" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "⚠️ Docker build was not successful, skipping ECR check." >> $GITHUB_STEP_SUMMARY
+          fi

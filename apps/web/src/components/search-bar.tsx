@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +12,38 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ categories }: SearchBarProps) {
-  const [inputValue, setInputValue] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [inputValue, setInputValue] = useState(searchParams.get('q') || "");
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(searchParams.get('category') || undefined);
+
+  // Sync state with URL params
+  useEffect(() => {
+    setInputValue(searchParams.get('q') || "");
+    setSelectedCategory(searchParams.get('category') || undefined);
+  }, [searchParams]);
+
+  const updateUrl = (search: string, category: string | undefined) => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (category) params.set('category', category);
+    
+    router.push(`/?${params.toString()}`);
+  };
 
   const handleSearch = (): void => {
-    setSearchTerm(inputValue.trim());
+    updateUrl(inputValue.trim(), selectedCategory);
+  };
+
+  const handleCategorySelect = (slug: string | undefined) => {
+    setSelectedCategory(slug);
+    updateUrl(inputValue.trim(), slug);
+  };
+
+  const clearSearch = () => {
+    setInputValue("");
+    updateUrl("", selectedCategory);
   };
 
   return (
@@ -44,14 +71,11 @@ export function SearchBar({ categories }: SearchBarProps) {
             >
               Хайх
             </Button>
-            {searchTerm && (
+            {inputValue && (
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => {
-                  setSearchTerm("");
-                  setInputValue("");
-                }}
+                onClick={clearSearch}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -62,7 +86,7 @@ export function SearchBar({ categories }: SearchBarProps) {
             <Button
               variant={selectedCategory === undefined ? "default" : "outline"}
               size="sm"
-              onClick={() => setSelectedCategory(undefined)}
+              onClick={() => handleCategorySelect(undefined)}
               className={selectedCategory === undefined ? "bg-yellow-600 text-white" : "bg-gray-200"}
             >
               Бүх үйлчилгээ
@@ -72,7 +96,7 @@ export function SearchBar({ categories }: SearchBarProps) {
                 key={category.id}
                 variant={selectedCategory === category.slug ? "default" : "outline"}
                 size="sm"
-                onClick={() => setSelectedCategory(category.slug)}
+                onClick={() => handleCategorySelect(category.slug)}
                 className={
                   selectedCategory === category.slug
                     ? "bg-yellow-600 text-white"

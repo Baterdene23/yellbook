@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const error_param = searchParams.get("error");
-  const callbackUrl = searchParams.get("callbackUrl") || "/yellow-books";
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   useEffect(() => {
     if (error_param) {

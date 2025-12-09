@@ -13,9 +13,9 @@ export default function NotFound() {
         руу буцна уу.
       </p>
 
-      <Link href="/yellow-books">
+      <Link href="/">
         <Button className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3">
-          Шар номын жагсаалт руу буцах
+          Нүүр хуудас руу буцах
         </Button>
       </Link>
     </div>

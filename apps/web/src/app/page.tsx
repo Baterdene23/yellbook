@@ -10,13 +10,20 @@ import { SearchBar } from "@/components/search-bar";
 
 export const revalidate = 3600;
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { q?: string; category?: string };
+}) {
   let entries: YellowBookEntry[] = [];
   let categories: YellowBookCategory[] = [];
 
   try {
     const [entriesData, categoriesData] = await Promise.all([
-      fetchYellowBookList({}),
+      fetchYellowBookList({
+        search: searchParams.q,
+        categorySlug: searchParams.category,
+      }),
       fetchYellowBookCategories(),
     ]);
     entries = entriesData || [];

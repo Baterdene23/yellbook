@@ -78,6 +78,7 @@ export type YellowBookListParams = {
   categorySlug?: string;
   organizationType?: OrganizationKind;
   tag?: string;
+  limit?: number;
 };
 
 /* -------------------------------------------------------
@@ -98,7 +99,7 @@ export async function fetchYellowBookList(
   if (params.categorySlug) url.searchParams.set('categorySlug', params.categorySlug);
   if (params.organizationType) url.searchParams.set('organizationType', params.organizationType);
   if (params.tag) url.searchParams.set('tag', params.tag);
-
+  if (params.limit) url.searchParams.set('limit', params.limit.toString());
   const data = await apiFetch<unknown>(`${url.pathname}${url.search}`, init);
   return YellowBookEntrySchema.array().parse(data);
 }

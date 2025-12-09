@@ -36,7 +36,7 @@ export async function requireAuthSession() {
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    redirect("/login?callbackUrl=/yellow-books");
+    redirect("/login?callbackUrl=/");
   }
 
   return session;

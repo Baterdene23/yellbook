@@ -12,14 +12,22 @@ import {
   Phone,
 } from "lucide-react";
 
-import { fetchYellowBookDetail } from "@/utils/trpc";
+import { fetchYellowBookDetail, fetchYellowBookList } from "@/utils/trpc";
 
 // Энэ page-ийг ISR маягаар cache-лана
 export const revalidate = 60;
 
-// Build үед dynamic SSG хийхгүй — энэ нь CI дээр fetch алдаа гаргахгүй болгоно
+// Build үед эхний 10 байгууллагыг SSG болгож үүсгэнэ
 export async function generateStaticParams() {
-  return [];
+  try {
+    const entries = await fetchYellowBookList({ limit: 10 });
+    return entries.map((entry) => ({
+      id: entry.id,
+    }));
+  } catch (error) {
+    console.error("Failed to generate static params:", error);
+    return [];
+  }
 }
 
 export async function generateMetadata({
@@ -73,7 +81,7 @@ export default async function YellowBookDetailPage({
     <div className="min-h-screen bg-gray-50">
       <div className="bg-yellow-50 border-b-2 border-yellow-600 py-6">
         <div className="container mx-auto px-4">
-          <Link href="/yellow-books">
+          <Link href="/">
             <Button
               variant="outline"
               className="border-yellow-600 text-yellow-600 hover:bg-yellow-50 mb-4"

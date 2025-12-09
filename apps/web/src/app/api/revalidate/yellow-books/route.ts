@@ -31,8 +31,7 @@ export async function POST(request: Request) {
 
   if (payload?.collection !== false) {
     revalidateTag(COLLECTION_TAG);
-    revalidatePath("/yellow-books");
-    revalidatePath("/yellow-books/search");
+    revalidatePath("/");
     tagsRevalidated.push(COLLECTION_TAG);
   }
 
