@@ -11,12 +11,10 @@ const nextConfig = {
   // See: https://nx.dev/recipes/next/next-config-setup
   nx: {},
   webpack: (config) => {
+    const path = require('path');
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname, 'src/'),
-      '@/components': require('path').resolve(__dirname, 'src/components/'),
-      '@/lib': require('path').resolve(__dirname, 'src/lib/'),
-      '@/utils': require('path').resolve(__dirname, 'src/utils/'),
+      '@': path.resolve(__dirname, 'src'),
     };
     return config;
   },
