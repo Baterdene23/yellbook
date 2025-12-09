@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Clock, Facebook, Globe, Instagram, Mail, MapPin, Phone } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, use } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,9 @@ import { SearchBar } from "@/components/search-bar";
 function HomePageContent({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string };
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
+  const params = use(searchParams);
   const [entries, setEntries] = useState<YellowBookEntry[]>([]);
   const [categories, setCategories] = useState<YellowBookCategory[]>([]);
 
@@ -24,8 +25,8 @@ function HomePageContent({
       try {
         const [entriesData, categoriesData] = await Promise.all([
           fetchYellowBookList({
-            search: searchParams.q,
-            categorySlug: searchParams.category,
+            search: params.q,
+            categorySlug: params.category,
           }),
           fetchYellowBookCategories(),
         ]);
@@ -37,7 +38,7 @@ function HomePageContent({
     };
 
     loadData();
-  }, [searchParams.q, searchParams.category]);
+  }, [params.q, params.category]);
 
   return (
     <div className="min-h-screen w-full bg-gray-50">
@@ -206,7 +207,7 @@ function HomePageContent({
 function HomePageContentWrapper({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string };
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
   return (
     <Suspense
@@ -224,7 +225,7 @@ function HomePageContentWrapper({
 export default function HomePage({
   searchParams,
 }: {
-  searchParams: { q?: string; category?: string };
+  searchParams: Promise<{ q?: string; category?: string }>;
 }) {
   return <HomePageContentWrapper searchParams={searchParams} />;
 }
