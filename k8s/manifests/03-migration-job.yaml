@@ -9,9 +9,12 @@ spec:
     metadata:
       labels:
         app: db-migration
+        job-name: db-migration
     spec:
       serviceAccountName: yellowbooks-sa
       restartPolicy: Never
+      imagePullSecrets:
+      - name: ecr-secret
       containers:
       - name: db-migration
         image: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
@@ -37,5 +40,3 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-      imagePullSecrets:
-      - name: ecr-secret
