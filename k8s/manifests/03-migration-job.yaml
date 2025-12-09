@@ -4,7 +4,7 @@ metadata:
   name: db-migration
   namespace: yellowbooks
 spec:
-  backoffLimit: 3
+  backoffLimit: 4
   template:
     metadata:
       labels:
@@ -12,9 +12,9 @@ spec:
         job-name: db-migration
     spec:
       serviceAccountName: yellowbooks-sa
-      restartPolicy: Never
+      restartPolicy: OnFailure
       imagePullSecrets:
-      - name: ecr-secret
+        - name: ecr-secret
       containers:
       - name: db-migration
         image: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
