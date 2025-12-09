@@ -8,19 +8,45 @@ const prisma = new PrismaClient();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// Initialize Redis Client
-const redis = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
-});
+// Initialize Redis Client with graceful error handling
+let redis: ReturnType<typeof createClient> | null = null;
 
-redis.on('error', (err) => console.error('Redis Client Error', err));
+const initRedis = async () => {
+  try {
+    if (!redis) {
+      redis = createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379',
+        socket: {
+          reconnectStrategy: (retries) => {
+            if (retries > 3) {
+              console.warn('Redis connection failed after 3 retries, operating without cache');
+              return new Error('Redis connection failed');
+            }
+            return Math.min(retries * 100, 3000);
+          },
+        },
+      });
 
-// Connect to Redis
-(async () => {
-  if (!redis.isOpen) {
-    await redis.connect();
+      redis.on('error', (err) => {
+        console.warn('⚠️  Redis Error (cache disabled):', err.message);
+      });
+
+      redis.on('connect', () => {
+        console.log('✅ Redis connected');
+      });
+
+      if (!redis.isOpen) {
+        await redis.connect();
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️  Failed to initialize Redis, operating without cache:', err);
+    redis = null;
   }
-})();
+};
+
+// Initialize Redis connection asynchronously
+initRedis();
 
 // Cosine similarity function
 function cosineSimilarity(a: number[], b: number[]) {
@@ -44,13 +70,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    // Check Cache
+    // Check Cache (if Redis is available)
     const cacheKey = `ai:search:${query.trim().toLowerCase()}`;
-    if (useCache) {
-      const cachedResult = await redis.get(cacheKey);
-      if (cachedResult) {
-        console.log('🎯 Cache Hit');
-        return NextResponse.json(JSON.parse(cachedResult));
+    if (useCache && redis) {
+      try {
+        const cachedResult = await redis.get(cacheKey);
+        if (cachedResult) {
+          console.log('🎯 Cache Hit');
+          return NextResponse.json(JSON.parse(cachedResult));
+        }
+      } catch (cacheErr) {
+        console.warn('⚠️  Cache read failed, proceeding without cache:', cacheErr);
       }
     }
 
@@ -85,8 +115,15 @@ export async function POST(req: Request) {
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit);
 
-    // Cache the result (expire in 1 hour)
-    await redis.set(cacheKey, JSON.stringify(results), { EX: 3600 });
+    // Cache the result (expire in 1 hour) if Redis is available
+    if (redis) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(results), { EX: 3600 });
+        console.log('💾 Result cached');
+      } catch (cacheErr) {
+        console.warn('⚠️  Cache write failed:', cacheErr);
+      }
+    }
 
     return NextResponse.json(results);
   } catch (error) {
