@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Clock, Facebook, Globe, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,29 +11,33 @@ import { fetchYellowBookCategories, fetchYellowBookList } from "@/utils/trpc";
 import type { YellowBookEntry, YellowBookCategory } from "@lib/types";
 import { SearchBar } from "@/components/search-bar";
 
-export const revalidate = 3600;
-
-export default async function HomePage({
+function HomePageContent({
   searchParams,
 }: {
   searchParams: { q?: string; category?: string };
 }) {
-  let entries: YellowBookEntry[] = [];
-  let categories: YellowBookCategory[] = [];
+  const [entries, setEntries] = useState<YellowBookEntry[]>([]);
+  const [categories, setCategories] = useState<YellowBookCategory[]>([]);
 
-  try {
-    const [entriesData, categoriesData] = await Promise.all([
-      fetchYellowBookList({
-        search: searchParams.q,
-        categorySlug: searchParams.category,
-      }),
-      fetchYellowBookCategories(),
-    ]);
-    entries = entriesData || [];
-    categories = categoriesData || [];
-  } catch (error) {
-    console.error("Failed to fetch home page data:", error);
-  }
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [entriesData, categoriesData] = await Promise.all([
+          fetchYellowBookList({
+            search: searchParams.q,
+            categorySlug: searchParams.category,
+          }),
+          fetchYellowBookCategories(),
+        ]);
+        setEntries(entriesData || []);
+        setCategories(categoriesData || []);
+      } catch (error) {
+        console.error("Failed to fetch home page data:", error);
+      }
+    };
+
+    loadData();
+  }, [searchParams.q, searchParams.category]);
 
   return (
     <div className="min-h-screen w-full bg-gray-50">
@@ -194,4 +201,30 @@ export default async function HomePage({
       </footer>
     </div>
   );
+}
+
+function HomePageContentWrapper({
+  searchParams,
+}: {
+  searchParams: { q?: string; category?: string };
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <p>Ачааллаж байна...</p>
+        </div>
+      }
+    >
+      <HomePageContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams: { q?: string; category?: string };
+}) {
+  return <HomePageContentWrapper searchParams={searchParams} />;
 }

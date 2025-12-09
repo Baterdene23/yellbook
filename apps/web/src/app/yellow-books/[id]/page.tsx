@@ -12,22 +12,16 @@ import {
   Phone,
 } from "lucide-react";
 
-import { fetchYellowBookDetail, fetchYellowBookList } from "@/utils/trpc";
+import { fetchYellowBookDetail } from "@/utils/trpc";
 
 // Энэ page-ийг ISR маягаар cache-лана
 export const revalidate = 60;
 
 // Build үед эхний 10 байгууллагыг SSG болгож үүсгэнэ
 export async function generateStaticParams() {
-  try {
-    const entries = await fetchYellowBookList({ limit: 10 });
-    return entries.map((entry) => ({
-      id: entry.id,
-    }));
-  } catch (error) {
-    console.error("Failed to generate static params:", error);
-    return [];
-  }
+  // CI/Build environment дээр backend асахгүй байгаа тул SSG-г алгалгүй
+  // ISR (revalidate = 60) ашиглаж байгаа тул гэмтээ байхгүй
+  return [];
 }
 
 export async function generateMetadata({
