@@ -13,7 +13,7 @@ spec:
       serviceAccountName: yellowbooks-sa
       restartPolicy: Never
       containers:
-      - name: migrate
+      - name: db-migration
         image: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
         imagePullPolicy: Always
         command: 
