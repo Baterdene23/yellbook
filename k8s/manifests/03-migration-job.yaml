@@ -5,6 +5,7 @@ metadata:
   namespace: yellowbooks
 spec:
   backoffLimit: 4
+  ttlSecondsAfterFinished: 86400
   template:
     metadata:
       labels:
@@ -16,27 +17,27 @@ spec:
       imagePullSecrets:
         - name: ecr-secret
       containers:
-      - name: db-migration
-        image: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
-        imagePullPolicy: Always
-        command: 
-          - /bin/sh
-          - -c
-          - |
-            npx prisma migrate deploy
-            npx prisma db seed || true
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: yellowbooks-config
-              key: DATABASE_URL
-        - name: NODE_ENV
-          value: production
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+        - name: db-migration
+          image: 754029048634.dkr.ecr.ap-southeast-1.amazonaws.com/yellbook/api:latest
+          imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -c
+            - |
+              npx prisma migrate deploy
+              npx prisma db seed || true
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: yellowbooks-config
+                  key: DATABASE_URL
+            - name: NODE_ENV
+              value: production
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
